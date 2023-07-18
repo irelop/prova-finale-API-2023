@@ -53,35 +53,46 @@ int main() {
         sscanf(input, "%s", comando);
         if(strcmp(comando, "aggiungi-stazione") == 0){
             int dist, numV;
-            sscanf(input, "%d %d", &dist, &numV);
+            sscanf(input, "%*s %d %d", &dist, &numV);
             if(dist < 0 || numV < 0)
                 puts("non aggiunta");
             else{
-                int veicoli[numV], i = 0;
-                char* autonomie = strtok(input, " "); //do while?
-                while(autonomie != NULL){
-                    autonomie = strtok(NULL, ",");
-                    if(autonomie != NULL) {
-                        veicoli[i] = atoi(autonomie);
-                        if(veicoli[i]<0){
-                            puts("non aggiunta");
-                            break;
+                if(numV != 0) {
+                    int veicoli[numV], i = 0;
+                    char *autonomie = strtok(input, " "); //do while?
+                    while (autonomie != NULL) {
+                        autonomie = strtok(NULL, ",");
+                        if (autonomie != NULL) {
+                            veicoli[i] = atoi(autonomie);
+                            if (veicoli[i] < 0) {
+                                puts("non aggiunta");
+                                break;
+                            }
+                            i++;
                         }
-                        i++;
+                    }
+                    if(sizeof(veicoli)/sizeof(veicoli[0]) != numV)
+                        puts("non aggiunta");
+                    else if(veicoli[i-1] > 0){
+                        ordinaAuto(veicoli, 0, numV-1);
+                        aggiungiStazione(dist, numV, veicoli);
                     }
                 }
-                if(veicoli[i-1] > 0){
-                    ordinaAuto(veicoli, 1, numV);
-                    aggiungiStazione(dist, numV, veicoli);
-                }
+                else
+                    aggiungiStazione(dist, numV, NULL);
+
+
             }
         }
-        else if(strcmp(comando, "demolisci-stazione")==0)
-            demolisciStazione(atoi(input));
+        else if(strcmp(comando, "demolisci-stazione")==0) {
+            int dist;
+            sscanf(input, "%*s %d", &dist);
+            demolisciStazione(dist);
+        }
 
         else if(strcmp(comando, "aggiungi-auto")==0){
             int dist, autonomia;
-            sscanf(input, "%d %d", &dist, &autonomia);
+            sscanf(input, "%*s %d %d", &dist, &autonomia);
             if(dist<0 || autonomia<0)
                 puts("non aggiunta");
             else{
@@ -90,7 +101,7 @@ int main() {
                     puts("non aggiunta");
                 else{
                     if (aggiungiAuto(s, autonomia) == 1) {
-                        ordinaAuto(s->veicoli, 1, s->nVeicoli);
+                        ordinaAuto(s->veicoli, 0, s->nVeicoli-1);
                         puts("aggiunta");
                     } else
                         puts("non aggiunta");
@@ -99,7 +110,7 @@ int main() {
         }
         else if(strcmp(comando, "rottama-auto")==0){
             int dist, autonomia;
-            sscanf(input, "%d %d", &dist, &autonomia);
+            sscanf(input, "%*s %d %d", &dist, &autonomia);
             if(dist<0 || autonomia<0)
                 puts("non rottamata");
             else{
@@ -122,14 +133,16 @@ void aggiungiStazione(int dist, int numV, int veicoli[]){
     temp->distanza = dist;
     temp->veicoli = malloc(sizeof(int) * 152);
     temp->nVeicoli = 0;
-    for(int i=0; i < numV; i++)
-        if(aggiungiAuto(temp, veicoli[i]) == 0) {
-            free(temp->veicoli);
-            free(temp);
-            puts("non aggiunta");
-            return ;
-        }
-    ordinaAuto(temp->veicoli, 1, temp->nVeicoli);
+    if(numV != 0){
+        for (int i = 0; i < numV; i++)
+            if (aggiungiAuto(temp, veicoli[i]) == 0) {
+                free(temp->veicoli);
+                free(temp);
+                puts("non aggiunta");
+                return;
+            }
+        ordinaAuto(temp->veicoli, 0, temp->nVeicoli - 1);
+    }
 
     if(stazioni->root == NULL){
         temp->left = NULL;
@@ -177,15 +190,23 @@ void demolisciStazione(int dist){
     }
 
     stazione y = NULL, x = NULL;
-    if(s->left == NULL || s->right == NULL)
+    if(s->left == NULL || s->right == NULL) {
+        puts("1");
         y = s;
-    else
+    }
+    else {
+        puts("2");
         y = trovaSuccessore(s);
+    }
 
-    if(y->left != NULL)
+    if(y->left != NULL) {
+        puts("1");
         x = y->left;
-    else
+    }
+    else {
+        puts("2");
         x = y->right;
+    }
     x->father = y->father;
     if(y->father == NULL)
         stazioni->root = x;
@@ -327,19 +348,18 @@ void ordinaAuto(int veicoli[], int p, int r){
 void merge(int veicoli[], int p, int q, int r){
     int n1 = q-p+1;
     int n2 = r-q;
-    int L[n1+1], R[n2+1];
-    int i, j;
+    int L[n1], R[n2];
+    int i, j, k;
     for(i=0; i<n1; i++)
-        L[i] = veicoli[p+i-1];
+        L[i] = veicoli[p+i];
     for(j=0; j<n2; j++)
-        R[j] = veicoli[q+j];
-    L[n1+1] = 2147483647;
-    R[n2+1] = 2147483647;
+        R[j] = veicoli[q+j+1];
 
-    i=1;
-    j=1;
+    i=0;
+    j=0;
+    k= p;
 
-    for(int k=p; k<r; k++){
+    while(i<n1 && j<n2){
         if(L[i] <= R[j]){
             veicoli[k] = L[i];
             i++;
@@ -348,7 +368,19 @@ void merge(int veicoli[], int p, int q, int r){
             veicoli[k] = R[j];
             j++;
         }
+        k++;
     }
+    while(i<n1){
+        veicoli[k] = L[i];
+        i++;
+        k++;
+    }
+    while(j<n2){
+        veicoli[k] = R[j];
+        j++;
+        k++;
+    }
+
 }
 
 void rottamaAuto(stazione s, int autonomia){
