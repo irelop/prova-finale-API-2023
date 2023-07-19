@@ -190,24 +190,17 @@ void demolisciStazione(int dist){
     }
 
     stazione y = NULL, x = NULL;
-    if(s->left == NULL || s->right == NULL) {
-        puts("1");
+    if(s->left == NULL || s->right == NULL)
         y = s;
-    }
-    else {
-        puts("2");
+    else
         y = trovaSuccessore(s);
-    }
 
-    if(y->left != NULL) {
-        puts("1");
+    if(y->left != NULL)
         x = y->left;
-    }
-    else {
-        puts("2");
+    else
         x = y->right;
-    }
-    x->father = y->father;
+    if(x != NULL)
+        x->father = y->father;
     if(y->father == NULL)
         stazioni->root = x;
     else if(y == y->father->left)
@@ -221,7 +214,7 @@ void demolisciStazione(int dist){
         free(s->veicoli);
         s->veicoli = y->veicoli;
     }
-    if(y->colore == 'b')
+    if(y->colore == 'b' && x != NULL)
         deleteFixup(x);
     free(y->veicoli);
     free(y);
