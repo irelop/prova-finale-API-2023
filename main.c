@@ -59,9 +59,11 @@ int main() {
             else{
                 if(numV != 0) {
                     int veicoli[numV], i = 0;
-                    char *autonomie = strtok(input, " "); //do while?
+                    char *autonomie = strtok(input, " ");
+                    autonomie = strtok(NULL, " ");
+                    autonomie = strtok(NULL, " ");
                     while (autonomie != NULL) {
-                        autonomie = strtok(NULL, ",");
+                        autonomie = strtok(NULL, " ");
                         if (autonomie != NULL) {
                             veicoli[i] = atoi(autonomie);
                             if (veicoli[i] < 0) {
@@ -71,7 +73,7 @@ int main() {
                             i++;
                         }
                     }
-                    if(sizeof(veicoli)/sizeof(veicoli[0]) != numV)
+                    if(i != numV)
                         puts("non aggiunta");
                     else if(veicoli[i-1] > 0){
                         ordinaAuto(veicoli, 0, numV-1);
@@ -128,22 +130,22 @@ int main() {
     return 0;
 }
 
-void aggiungiStazione(int dist, int numV, int veicoli[]){
+void aggiungiStazione(int dist, int numV, int v[]){
     stazione temp = malloc(sizeof(struct nodos));
     temp->distanza = dist;
     temp->veicoli = malloc(sizeof(int) * 152);
     temp->nVeicoli = 0;
     if(numV != 0){
-        for (int i = 0; i < numV; i++)
-            if (aggiungiAuto(temp, veicoli[i]) == 0) {
+        for (int i = 0; i < numV; i++) {
+            if (aggiungiAuto(temp, v[i]) == 0) {
                 free(temp->veicoli);
                 free(temp);
                 puts("non aggiunta");
                 return;
             }
-        ordinaAuto(temp->veicoli, 0, temp->nVeicoli - 1);
+        }
+        ordinaAuto(temp->veicoli, 0, numV-1);
     }
-
     if(stazioni->root == NULL){
         temp->left = NULL;
         temp->right = NULL;
@@ -301,16 +303,12 @@ void deleteFixup(stazione s){
 short aggiungiAuto(stazione s, int autonomia){
     if(s == NULL)
         return 0;
-    if(s->nVeicoli == 0){
-        s->veicoli[0] = autonomia;
-        s->nVeicoli++;
-        return 1;
-    }
 
-    if(cercaAuto(s, autonomia) != -1) //se è la prima volta non è detto che sia ordinato
+    if(s->nVeicoli > 0 && cercaAuto(s, autonomia) != -1)
         return 0;
 
     s->veicoli[s->nVeicoli] = autonomia;
+    s->nVeicoli ++;
     return 1;
 }
 
