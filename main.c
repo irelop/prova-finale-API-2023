@@ -428,7 +428,7 @@ void insertFixup(stazione temp){
             }
             else{
                 stazione y = x->father->left;
-                if(y->colore == 'r'){
+                if(y != NULL && y->colore == 'r'){
                     x->colore = 'b';
                     y->colore = 'b';
                     x->father->colore = 'r';
