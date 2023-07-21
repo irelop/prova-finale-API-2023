@@ -1,6 +1,7 @@
 #include <stdio.h>
-#include<stdlib.h>
-#include<string.h>
+#include <stdlib.h>
+#include <string.h>
+#include <math.h>
 
 /*struct nodov{
     int autonomia;
@@ -24,6 +25,7 @@ struct trees{
 
 typedef struct trees *alberos;
 alberos stazioni;
+int numStazioni;
 
 struct nodog{
     int g;
@@ -42,6 +44,23 @@ struct graph{
 };
 typedef struct graph *grafos;
 grafos grafo;
+
+struct nodoOpen{
+    struct nodog *nodo;
+    struct nodoOpen *next;
+    struct nodoOpen *p;
+};
+struct listaOpen{
+    struct nodoOpen *head;
+};
+
+struct nodop{
+    int dist;
+    struct nodop *next;
+};
+struct listap{
+    struct nodop *head;
+};
 
 void aggiungiStazione(int, int, int []);
 void insertFixup(stazione);
@@ -63,6 +82,11 @@ void rottamaAuto(stazione, int);
 void costruisciGrafo(int, int, stazione);
 void aggiungiArchi(int, int, stazione, listaArchi, int);
 void pianificaPercorso(int, int);
+void liberaLista(struct listaOpen *l);
+
+void costruisciGrafo2(int inizio, int fine, stazione x, int i, int grafo[][numStazioni]);
+void aggiungiArchi2(int inizio, int fine, stazione s, int i, int stazioneMax, int dist, int j, int grafo[][numStazioni]);
+
 
 //da cancellare
 void inorder_tree_walk(stazione x)
@@ -93,6 +117,7 @@ int main() {
     char input[100], comando[100];
     stazioni = malloc(sizeof(struct trees));
     stazioni->root = NULL;
+    numStazioni=0;
 
     while(fgets(input, 100, stdin) != NULL ){
         sscanf(input, "%s", comando);
@@ -170,37 +195,242 @@ int main() {
         }
         else if(strcmp(comando, "pianifica-percorso")==0){
             int inizio, fine;
-            sscanf(input, "%*s %d %d", &inizio, &fine);
-            /*if(inizio<0 || fine<0)
-                puts("nessun percorso");*/
-            if(grafo==NULL) {
+            sscanf(input, "%*s %d %d", &inizio, &fine); //tenere vecchio grafo?
+            if(stazioni->root == NULL)
+                puts("nessun percorso");
+            else{//    if(grafo==NULL) {//controlla
                 grafo = malloc(sizeof(struct graph));
                 grafo->staz = NULL;
                 costruisciGrafo(inizio, fine, stazioni->root);
-                //stampaLista();
+                //  stampaLista();
+                //   }
+                pianificaPercorso(inizio, fine);
             }
-            pianificaPercorso(inizio, fine);
 
         }
     }
     return 0;
 }
 
-void costruisciGrafo(int inizio, int fine, stazione x){
+void aggiungiArchi2(int inizio, int fine, stazione s, int i, int autonomiaMax, int dist, int j, int grafo[][numStazioni]){//riempio matrice parzialmente
+    if(s!=NULL){
+        aggiungiArchi2(inizio, fine, s->left, i, autonomiaMax, dist, j, grafo);
+
+        printf("aggiungi archi con %d, j=%d \n", dist, j);
+        if((dist <= s->distanza && dist + autonomiaMax >= s->distanza) || (dist > s->distanza && dist - autonomiaMax <= s->distanza))
+            grafo[i][j] = 1;
+        else
+            grafo[i][j] = 0;
+        j++;
+
+        aggiungiArchi2(inizio, fine, s->right, i, autonomiaMax, dist, j, grafo);
+    }
+}
+
+void costruisciGrafo2(int inizio, int fine, stazione x, int i, int grafo[][numStazioni]){
+    if(x != NULL){
+        costruisciGrafo2(inizio, fine, x->left, i, grafo);
+        printf("costruisci grafo con %d, i=%d\n", x->distanza, i);
+        aggiungiArchi2(inizio, fine, x, i, x->veicoli[x->nVeicoli-1], x->distanza, 0, grafo);
+        printf("ho aggiunto archi di %d\n", x->distanza);
+        i++;
+        costruisciGrafo2(inizio, fine, x->right, i, grafo);
+    }
+}
+
+/*void pianificaPercorso2(int inizio, int fine){
+    int costi[numStazioni];
+    for(int i=1; i<numStazioni; i++)
+        costi[i] = INT_MAX;
+    costi[0] = 0;
+
+    listaArchi cura = grafo->staz;
+    struct nodog *curg;
+
+    while(cura != NULL){
+        curg = cura->head;
+        while(curg != NULL){
+          if(curg->dist/10 < costi[curg->g])
+                costi[curg->g] =
+        }
+    }
+}*/
+
+void pianificaPercorso(int inizio, int fine){ //da finire ma non mi convince, aggiungo nodi nel grafo desc?
+    struct listaOpen *open = malloc(sizeof (struct listaOpen));
+    struct listaOpen *closed = malloc(sizeof(struct listaOpen));
+    struct nodog *cur;
+    open->head = malloc(sizeof (struct nodoOpen));
+    open->head->nodo = grafo->staz->head;
+    open->head->next = NULL;
+    open->head->p = NULL;
+    closed->head = NULL;
+
+    while(1){
+        struct nodoOpen *n = open->head;
+        // printf("tolgo da open: %d\n", open->head->nodo->dist);
+        if(n == NULL){
+            puts("nessun percorso");
+            break;
+        }
+        open->head = n->next; //tolgo nodo con costo minore da open
+
+        n->next = closed->head;
+        closed->head = n; //inserisco nodo con costo minore in closed
+
+        if(closed->head->nodo->dist == fine)
+            break;
+
+        listaArchi curNodoG = grafo->staz;
+        while(curNodoG != NULL){
+            if(curNodoG->head->dist == closed->head->nodo->dist)
+                break;
+            curNodoG = curNodoG->next;
+        }
+        if(curNodoG == NULL){
+            puts("nessun percorso");
+            break;
+        }
+        cur = curNodoG->head->next;
+      //  printf("curNodog: %d\n", curNodoG->head->dist);
+
+        //inserimento ordinato dei nodi adiacenti in open
+        while(cur!=NULL){
+        //    printf("cur: %d\n", cur->dist);
+            cur->g ++;
+            struct nodoOpen *curClose = closed->head;
+            short isClosed = 0;
+            while(curClose != NULL){ //controllo se il nodo non è già stato espanso
+                if(cur->dist == curClose->nodo->dist) {
+                    isClosed = 1;
+                    break;
+                }
+                curClose = curClose->next;
+            }
+            if(isClosed == 0) {
+                struct nodoOpen *curOpen = open->head;
+                struct nodoOpen *prec = NULL;
+                while (curOpen != NULL) {
+                    if (cur->dist == curOpen->nodo->dist) //controllo se il nodo è già in open
+                        break;
+             //       printf("if: %d < %d\n", cur->dist / 10 + cur->g, curOpen->nodo->dist/10 + curOpen->nodo->g);
+                    if (cur->dist / 10 + cur->g < curOpen->nodo->dist/10 + curOpen->nodo->g) {
+                        struct nodoOpen *temp = malloc(sizeof(struct nodoOpen));
+                        temp->nodo = cur;
+                        temp->p = closed->head;
+                        if (prec == NULL) {
+                            temp->next = open->head;
+                            open->head = temp;
+                        //    printf("aggiungo a open: %d\n", temp->nodo->dist);
+                            break;
+                        }
+                        temp->next = curOpen;
+                        prec->next = temp;
+                        break;
+                      //  printf("aggiungo a open: %d\n", temp->nodo->dist);
+                    }
+                    prec = curOpen;
+                    curOpen = curOpen->next;
+                }
+                if (curOpen == NULL) {
+                    struct nodoOpen *temp = malloc(sizeof(struct nodoOpen));
+                    temp->nodo = cur;
+                    temp->p = closed->head;
+                    if(prec==NULL){
+                        temp->next = open->head;
+                        open->head = temp;
+                    }
+                    else{
+                        prec->next = temp;
+                        temp->next = NULL;
+                    }
+                   // printf("aggiungo a open: %d\n", temp->nodo->dist);
+                }
+            }
+            cur = cur->next;
+        }
+    }
+
+    //controllo se posso
+    if(closed->head->nodo->dist == fine) {
+        struct nodoOpen *curcl = closed->head->p;
+        struct listaOpen *percorso = malloc(sizeof (struct listaOpen));
+        percorso->head = closed->head;
+        percorso->head->next = NULL;
+
+        while(curcl != NULL){
+            curcl->next = percorso->head;
+            percorso->head = curcl;
+            curcl = curcl->p;
+        }
+
+        char perc[100];
+        curcl = percorso->head;
+        sprintf(perc, "%d", curcl->nodo->dist);
+        strcat(perc, " ");
+        curcl = curcl->next;
+        while(curcl != NULL){
+            int size = (int)((ceil(log10(curcl->nodo->dist))+1)*sizeof(char));
+            char string[size];
+            sprintf(string, "%d", curcl->nodo->dist);
+            strcat(perc,string);
+            if(curcl->nodo->dist != fine)
+                strcat(perc, " ");
+            curcl = curcl->next;
+        }
+        puts(perc);
+        free(percorso);
+    }
+    liberaLista(open);
+    liberaLista(closed);
+
+    listaArchi curl = grafo->staz;
+    listaArchi precl = NULL;
+    while(curl != NULL){
+        cur = curl->head;
+        struct nodog *prec = NULL;
+        while(cur!=NULL){
+            prec = cur;
+            cur = cur->next;
+            free(prec);
+        }
+        precl = curl;
+        curl = curl->next;
+        free(precl);
+    }
+    free(grafo);
+    grafo = NULL;
+}
+
+void liberaLista(struct listaOpen *l){
+    struct nodoOpen *cur = l->head;
+    struct nodoOpen *prec = NULL;
+    while(cur != NULL){
+        prec = cur;
+        cur = cur->next;
+        free(prec);
+    }
+    free(l);
+}
+
+void costruisciGrafo(int inizio, int fine, stazione x){ //anche al contrario!
     if(x != NULL){
         costruisciGrafo(inizio, fine, x->right);
 
-        if(x->distanza>=inizio && x->distanza<fine){
+        if(x->distanza>=inizio && x->distanza<=fine){
             struct list *temp = malloc(sizeof(struct list));
             temp->head = malloc(sizeof(struct nodog));
             temp->head->dist = x->distanza; //da controllare
             temp->head->next = NULL;
+            //temp->head->g = i;
+            temp->head->g=0;
             temp->next = grafo->staz;
             grafo->staz = temp;
 
-            //printf("aggiungo a grafo: %d -> ", temp->head->dist);
 
-            aggiungiArchi(inizio, fine, stazioni->root, temp, x->veicoli[x->nVeicoli-1]);
+            //printf("aggiungo a grafo: %d -> ", temp->head->dist);
+            if(x->distanza < fine)
+                aggiungiArchi(inizio, fine, stazioni->root, temp, x->veicoli[x->nVeicoli-1]);
             //printf("\n");
         }
 
@@ -216,6 +446,7 @@ void aggiungiArchi(int inizio, int fine, stazione s, listaArchi nodo, int autono
             nodo->head->dist + autonomiaMax >= s->distanza){
             struct nodog *temp = malloc(sizeof(struct nodog));
             temp->dist = s->distanza;
+            temp->g = 0;
             temp->next = nodo->head->next;
             nodo->head->next = temp;
             //printf("%d -> ", temp->dist);
@@ -248,6 +479,7 @@ void aggiungiStazione(int dist, int numV, int v[]){
         stazioni->root = temp;
         insertFixup(temp);
         puts("aggiunta");
+        numStazioni++;
         return ;
     }
 
@@ -276,6 +508,7 @@ void aggiungiStazione(int dist, int numV, int v[]){
     temp->colore = 'r';
     insertFixup(temp);
     puts("aggiunta");
+    numStazioni++;
 }
 
 void demolisciStazione(int dist){
@@ -316,6 +549,7 @@ void demolisciStazione(int dist){
     free(y->veicoli);
     free(y);
     puts("demolita");
+    numStazioni--;
 }
 
 stazione trovaSuccessore(stazione s){
@@ -398,10 +632,6 @@ void deleteFixup(stazione s){
 short aggiungiAuto(stazione s, int autonomia){
     if(s == NULL)
         return 0;
-
-    if(s->nVeicoli > 0 && cercaAuto(s, autonomia) != -1)
-        return 0;
-
     s->veicoli[s->nVeicoli] = autonomia;
     s->nVeicoli ++;
     return 1;
