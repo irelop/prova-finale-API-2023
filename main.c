@@ -116,12 +116,12 @@ void stampaLista(){
 }
 
 int main() {
-    char input[100], comando[100];
+    char input[17000], comando[100];
     stazioni = malloc(sizeof(struct trees));
     stazioni->root = NULL;
     numStazioni=0;
 
-    while(fgets(input, 100, stdin) != NULL ){
+    while(fgets(input, 17000, stdin) != NULL ){
         sscanf(input, "%s", comando);
         if(strcmp(comando, "aggiungi-stazione") == 0){
             int dist, numV;
@@ -145,12 +145,12 @@ int main() {
                             i++;
                         }
                     }
-                    if(i != numV)
-                        puts("non aggiunta");
-                    else if(veicoli[i-1] >= 0){
+                    /*if(i != numV)
+                        puts("non aggiunta");*/
+                    //else if(veicoli[i-1] >= 0){
                         ordinaAuto(veicoli, 0, numV-1);
                         aggiungiStazione(dist, numV, veicoli);
-                    }
+                    //}
                 }
                 else
                     aggiungiStazione(dist, numV, NULL);
@@ -217,6 +217,7 @@ int main() {
             }
 
         }
+        else puts(input);
     }
     return 0;
 }
@@ -482,6 +483,7 @@ void costruisciGrafoDesc(int inizio, int fine, stazione x){ //anche al contrario
         costruisciGrafoDesc(inizio, fine, x->left);
 
         if(x->distanza>=fine && x->distanza<=inizio){
+            //printf("grafo: dist=%d e autonomiaMax=%d\n", x->distanza, x->veicoli[x->nVeicoli-1]);
             struct list *temp = malloc(sizeof(struct list));
             temp->head = malloc(sizeof(struct nodog));
             temp->head->dist = x->distanza; //da controllare
@@ -541,10 +543,12 @@ void aggiungiArchiDesc(int inizio, int fine, stazione s, listaArchi nodo, int au
 void aggiungiStazione(int dist, int numV, int v[]){
     stazione temp = malloc(sizeof(struct nodos));
     temp->distanza = dist;
-    temp->veicoli = malloc(sizeof(int) * 152);
+    temp->veicoli = malloc(sizeof(int) * 512);
     temp->nVeicoli = 0;
     if(numV != 0){
         for (int i = 0; i < numV; i++) {
+            /*if(dist == 447 || dist == 585)
+                printf("aggiungo auto %d (i=%d)\n", v[i], i);*/
             if (aggiungiAuto(temp, v[i]) == 0) {
                 free(temp->veicoli);
                 free(temp);
