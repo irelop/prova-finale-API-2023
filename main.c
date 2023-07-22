@@ -95,9 +95,9 @@ void inorder_tree_walk(stazione x)
 {
     if(x!=NULL)
     {
-        inorder_tree_walk(x->right);
-        printf("%d\n", x->distanza);
         inorder_tree_walk(x->left);
+        printf("%d\n", x->distanza);
+        inorder_tree_walk(x->right);
     }
 }
 
@@ -147,7 +147,7 @@ int main() {
                     }
                     if(i != numV)
                         puts("non aggiunta");
-                    else if(veicoli[i-1] > 0){
+                    else if(veicoli[i-1] >= 0){
                         ordinaAuto(veicoli, 0, numV-1);
                         aggiungiStazione(dist, numV, veicoli);
                     }
@@ -155,7 +155,7 @@ int main() {
                 else
                     aggiungiStazione(dist, numV, NULL);
 
-
+                //inorder_tree_walk(stazioni->root);
             }
         }
         else if(strcmp(comando, "demolisci-stazione")==0) {
@@ -168,17 +168,18 @@ int main() {
             int dist, autonomia;
             sscanf(input, "%*s %d %d", &dist, &autonomia);
             if(dist<0 || autonomia<0)
-                puts("non aggiunta");
+                puts("non aggiunta1");
             else{
                 stazione s = cercaStazione(stazioni->root, dist);
-                if(s==NULL)
-                    puts("non aggiunta");
+                if(s==NULL) {
+                    puts("non aggiunta2");
+                }
                 else{
                     if (aggiungiAuto(s, autonomia) == 1) {
                         ordinaAuto(s->veicoli, 0, s->nVeicoli-1);
                         puts("aggiunta");
                     } else
-                        puts("non aggiunta");
+                        puts("non aggiunta3");
                 }
             }
         }
