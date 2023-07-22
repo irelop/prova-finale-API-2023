@@ -168,18 +168,18 @@ int main() {
             int dist, autonomia;
             sscanf(input, "%*s %d %d", &dist, &autonomia);
             if(dist<0 || autonomia<0)
-                puts("non aggiunta1");
+                puts("non aggiunta");
             else{
                 stazione s = cercaStazione(stazioni->root, dist);
                 if(s==NULL) {
-                    puts("non aggiunta2");
+                    puts("non aggiunta");
                 }
                 else{
                     if (aggiungiAuto(s, autonomia) == 1) {
                         ordinaAuto(s->veicoli, 0, s->nVeicoli-1);
                         puts("aggiunta");
                     } else
-                        puts("non aggiunta3");
+                        puts("non aggiunta");
                 }
             }
         }
@@ -338,7 +338,7 @@ void pianificaPercorso(int inizio, int fine){ //da finire ma non mi convince, ag
                             curOpen->nodo->g = cur->g;
                         break;
                     }
-                    if (cur->dist / 10 + cur->g < curOpen->nodo->dist/10 + curOpen->nodo->g) {
+                    if (cur->dist+ cur->g < curOpen->nodo->dist+ curOpen->nodo->g) {
                         struct nodoOpen *temp = malloc(sizeof(struct nodoOpen));
                         temp->nodo = cur;
                         temp->p = closed->head;
