@@ -719,6 +719,9 @@ short aggiungiAuto(stazione s, int autonomia){
 }
 
 int cercaAuto(stazione s, int autonomia){
+    if(s->nVeicoli == 0)
+        return -1;
+
     int inizio = 0, fine = s->nVeicoli - 1, pos;
 
     while(inizio<=fine){
@@ -813,7 +816,7 @@ void insertFixup(stazione temp){
         if (x->colore == 'r') {
             if (x == x->father->left) {
                 stazione y = x->father->right;
-                if (y->colore == 'r') {
+                if (y != NULL && y->colore == 'r') {
                     x->colore = 'b';
                     y->colore = 'b';
                     x->father->colore = 'r';
