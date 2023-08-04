@@ -849,9 +849,10 @@ void demolisciStazione(int dist){
         free(s->veicoli);
         s->veicoli = y->veicoli;
     }
+    else
+        free(y->veicoli);
     if(y->colore == 'b' && x != NULL)
         deleteFixup(x);
-    free(y->veicoli);
     free(y);
     puts("demolita");
     numStazioni--;
