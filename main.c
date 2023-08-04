@@ -11,6 +11,7 @@ typedef struct nodov *veicolo;*/
 
 struct nodos{
     int distanza;
+    int g;
     //veicolo parco;
     int *veicoli;
     int nVeicoli;
@@ -28,8 +29,9 @@ alberos stazioni;
 int numStazioni;
 
 struct nodog{
-    int g;
-    int dist;
+    //int g;
+    //int dist;
+    struct nodos *s;
     struct nodog *next;
 };
 
@@ -46,7 +48,7 @@ typedef struct graph *grafos;
 grafos grafo;
 
 struct nodoOpen{
-    struct nodog *nodo;
+    struct nodos *nodo;
     struct nodoOpen *next;
     struct nodoOpen *p;
 };
@@ -83,8 +85,12 @@ void costruisciGrafoAsc(int, int, stazione);
 void costruisciGrafoDesc(int, int, stazione);
 void aggiungiArchiAsc(int, int, stazione, listaArchi, int);
 void aggiungiArchiDesc(int, int, stazione, listaArchi, int);
+void aggiungiArchiDesc2(int, int);
+void pianificaPercorsoAsc(int, int);
 void pianificaPercorso(int, int);
 void liberaLista(struct listaOpen *l);
+void stampaPercorsoAsc(struct listaOpen*, int);
+void stampaPercorsoDesc(struct listaOpen*, int);
 
 void costruisciGrafo2(int inizio, int fine, stazione x, int i, int grafo[][numStazioni]);
 void aggiungiArchi2(int inizio, int fine, stazione s, int i, int stazioneMax, int dist, int j, int grafo[][numStazioni]);
@@ -104,10 +110,10 @@ void inorder_tree_walk(stazione x)
 void stampaLista(){
     listaArchi cur = grafo->staz;
     while(cur!=NULL){
-        printf("%d -> ",cur->head->dist);
+        printf("%d -> ",cur->head->s->distanza);
         struct nodog *curN = cur->head->next;
         while(curN != NULL){
-            printf("%d -> ", curN->dist);
+            printf("%d -> ", curN->s->distanza);
             curN = curN->next;
         }
         printf("\n");
@@ -148,8 +154,8 @@ int main() {
                     /*if(i != numV)
                         puts("non aggiunta");*/
                     //else if(veicoli[i-1] >= 0){
-                        ordinaAuto(veicoli, 0, numV-1);
-                        aggiungiStazione(dist, numV, veicoli);
+                    ordinaAuto(veicoli, 0, numV-1);
+                    aggiungiStazione(dist, numV, veicoli);
                     //}
                 }
                 else
@@ -207,11 +213,17 @@ int main() {
                 if(inizio == fine)
                     printf("%d\n", inizio);
                 else{
-                    if (inizio < fine)
+                    if (inizio < fine) {
                         costruisciGrafoAsc(inizio, fine, stazioni->root);
-                    else
+                        //stampaLista();
+                        //pianificaPercorso(inizio, fine);
+                    }
+                    else {
                         costruisciGrafoDesc(inizio, fine, stazioni->root);
-                    //stampaLista();
+                        aggiungiArchiDesc2(inizio, fine);
+                        //stampaLista();
+                        //pianificaPercorso(inizio, fine);
+                    }
                     pianificaPercorso(inizio, fine);
                 }
             }
@@ -248,39 +260,15 @@ void costruisciGrafo2(int inizio, int fine, stazione x, int i, int grafo[][numSt
     }
 }
 
-/*void pianificaPercorso2(int inizio, int fine){
-    int costi[numStazioni];
-    for(int i=1; i<numStazioni; i++)
-        costi[i] = INT_MAX;
-    costi[0] = 0;
 
-    listaArchi cura = grafo->staz;
-    struct nodog *curg;
-
-    while(cura != NULL){
-        curg = cura->head;
-        while(curg != NULL){
-          if(curg->dist/10 < costi[curg->g])
-                costi[curg->g] =
-        }
-    }
-}*/
-
-void pianificaPercorso(int inizio, int fine){ //da finire ma non mi convince, aggiungo nodi nel grafo desc?
+void pianificaPercorsoAsc(int inizio, int fine){ //da finire ma non mi convince, aggiungo nodi nel grafo desc?
     struct listaOpen *open = malloc(sizeof (struct listaOpen));
     struct listaOpen *closed = malloc(sizeof(struct listaOpen));
     struct nodog *cur;
     open->head = malloc(sizeof (struct nodoOpen));
 
     listaArchi curl = grafo->staz;
-    /*while(curl!= NULL){
-        if(curl->head->dist == inizio) {
-            open->head->nodo = curl->head;
-            break;
-        }
-        curl = curl->next;
-    }*/
-    open->head->nodo = curl->head;
+    open->head->nodo = curl->head->s;
     open->head->next = NULL;
     open->head->p = NULL;
     closed->head = NULL;
@@ -297,7 +285,7 @@ void pianificaPercorso(int inizio, int fine){ //da finire ma non mi convince, ag
         n->next = closed->head;
         closed->head = n; //inserisco nodo con costo minore in closed
 
-        if(closed->head->nodo->dist == fine)
+        if(closed->head->nodo->distanza == fine)
             break;
 
         //printf("closed->head->nodo->dist=%d\n", closed->head->nodo->dist );
@@ -305,7 +293,7 @@ void pianificaPercorso(int inizio, int fine){ //da finire ma non mi convince, ag
         listaArchi curNodoG = grafo->staz;
         while(curNodoG != NULL){
             //printf("curNodoG->head->dist: %d\n", curNodoG->head->dist);
-            if(curNodoG->head->dist == closed->head->nodo->dist)
+            if(curNodoG->head->s->distanza == closed->head->nodo->distanza)
                 break;
             curNodoG = curNodoG->next;
         }
@@ -314,16 +302,17 @@ void pianificaPercorso(int inizio, int fine){ //da finire ma non mi convince, ag
             break;
         }
         cur = curNodoG->head->next;
-      //  printf("curNodog: %d\n", curNodoG->head->dist);
+        //  printf("curNodog: %d\n", curNodoG->head->dist);
 
         //inserimento ordinato dei nodi adiacenti in open
         while(cur!=NULL){
-        //    printf("cur: %d\n", cur->dist);
-            cur->g ++;
+            //    printf("cur: %d\n", cur->dist);
+            int g = curNodoG->head->s->g + 1;
             struct nodoOpen *curClose = closed->head;
             short isClosed = 0;
             while(curClose != NULL){ //controllo se il nodo non è già stato espanso
-                if(cur->dist == curClose->nodo->dist) {
+                if(cur->s->distanza == curClose->nodo->distanza) {
+                    //da sistemare?
                     isClosed = 1;
                     break;
                 }
@@ -334,32 +323,57 @@ void pianificaPercorso(int inizio, int fine){ //da finire ma non mi convince, ag
                 struct nodoOpen *prec = NULL;
                 while (curOpen != NULL) {
                     //controllo se il nodo è già in open
-                    if (cur->dist == curOpen->nodo->dist) {
-                        if (cur->g < curOpen->nodo->g)
-                            curOpen->nodo->g = cur->g;
+                    if(curOpen->nodo->distanza == cur->s->distanza){
+                        if(g < curOpen->nodo->g){
+                            curOpen->nodo->g = g;
+                            curOpen->p = closed->head;
+
+                            struct nodoOpen *nodoOp2 = open->head;
+                            prec = NULL;
+                            int cnew = curOpen->nodo->distanza + g;
+                            while(nodoOp2 != NULL){
+                                int ccorrente = nodoOp2->nodo->distanza + g;
+                                if(ccorrente > cnew){
+                                    if(prec == NULL){
+                                        curOpen->next = open->head;
+                                        open->head = curOpen;
+                                    }
+                                    else{
+                                        prec->next = curOpen;
+                                        curOpen->next = nodoOp2;
+                                    }
+                                    break;
+                                }
+                                prec= nodoOp2;
+                                nodoOp2 = nodoOp2->next;
+                            }
+                        }
                         break;
                     }
-                    if (cur->dist+ cur->g < curOpen->nodo->dist+ curOpen->nodo->g) {
+                    int costo = cur->s->distanza + g;
+                    int costoOp = curOpen->nodo->distanza + curOpen->nodo->g;
+                    if (costo < costoOp) {
+                        cur->s->g = g;
                         struct nodoOpen *temp = malloc(sizeof(struct nodoOpen));
-                        temp->nodo = cur;
+                        temp->nodo = cur->s;
                         temp->p = closed->head;
                         if (prec == NULL) {
                             temp->next = open->head;
                             open->head = temp;
-                        //    printf("aggiungo a open: %d\n", temp->nodo->dist);
+                            //    printf("aggiungo a open: %d\n", temp->nodo->dist);
                             break;
                         }
                         temp->next = curOpen;
                         prec->next = temp;
                         break;
-                      //  printf("aggiungo a open: %d\n", temp->nodo->dist);
+                        //  printf("aggiungo a open: %d\n", temp->nodo->dist);
                     }
                     prec = curOpen;
                     curOpen = curOpen->next;
                 }
                 if (curOpen == NULL) {
                     struct nodoOpen *temp = malloc(sizeof(struct nodoOpen));
-                    temp->nodo = cur;
+                    temp->nodo = cur->s;
                     temp->p = closed->head;
                     if(prec==NULL){
                         temp->next = open->head;
@@ -369,65 +383,21 @@ void pianificaPercorso(int inizio, int fine){ //da finire ma non mi convince, ag
                         prec->next = temp;
                         temp->next = NULL;
                     }
-                   // printf("aggiungo a open: %d\n", temp->nodo->dist);
+                    // printf("aggiungo a open: %d\n", temp->nodo->dist);
                 }
             }
             cur = cur->next;
         }
     }
 
-    //controllo se posso
-    if(closed->head->nodo->dist == fine) {
-        //struct nodoOpen *curcl = closed->head->p;
-        struct nodoOpen *curcl = closed->head;
-        struct listaOpen *percorso = malloc(sizeof (struct listaOpen));
-        //percorso->head = closed->head;
-        //percorso->head->next = NULL;
-        percorso->head = NULL;
 
-        while(curcl != NULL){
-
-            struct nodoOpen *parent = curcl->p;
-            struct nodoOpen *succ = curcl->next;
-            while(parent != succ){
-                curcl->next = succ->next;
-                free(succ);
-                succ = curcl->next;
-            }
-
-            curcl->next = percorso->head;
-            percorso->head = curcl;
-            curcl = curcl->p;
-        }
-
-        /*while(curcl != NULL){
-            curcl->next = percorso->head;
-            percorso->head = curcl;
-            curcl = curcl->p;
-        }*/
-
-        char perc[100];
-        curcl = percorso->head;
-        sprintf(perc, "%d", curcl->nodo->dist);
-        strcat(perc, " ");
-        curcl = curcl->next;
-        while(curcl != NULL){
-            int size = (int)((ceil(log10(curcl->nodo->dist))+1)*sizeof(char));
-            char string[size];
-            sprintf(string, "%d", curcl->nodo->dist);
-            strcat(perc,string);
-            if(curcl->nodo->dist != fine)
-                strcat(perc, " ");
-            curcl = curcl->next;
-        }
-        puts(perc);
-        liberaLista(percorso);
-        free(closed);
-    }
+    if(closed->head->nodo->distanza == fine)
+        stampaPercorsoAsc(closed, fine);
+    else if(inizio>fine && closed->head->nodo->distanza == inizio)
+        stampaPercorsoDesc(closed, fine);
     else
         liberaLista(closed);
     liberaLista(open);
-    //liberaLista(closed);
 
     curl = grafo->staz;
     listaArchi precl = NULL;
@@ -445,6 +415,216 @@ void pianificaPercorso(int inizio, int fine){ //da finire ma non mi convince, ag
     }
     free(grafo);
     grafo = NULL;
+}
+
+void pianificaPercorso(int inizio, int fine){ //da finire ma non mi convince, aggiungo nodi nel grafo desc?
+    struct listaOpen *open = malloc(sizeof (struct listaOpen));
+    struct listaOpen *closed = malloc(sizeof(struct listaOpen));
+    struct nodog *cur;
+    open->head = malloc(sizeof (struct nodoOpen));
+
+    listaArchi curl = grafo->staz;
+    open->head->nodo = curl->head->s;
+    open->head->next = NULL;
+    open->head->p = NULL;
+    closed->head = NULL;
+
+    while(1){
+        struct nodoOpen *n = open->head;
+        if(n == NULL){
+            puts("nessun percorso");
+            break;
+        }
+        open->head = n->next; //tolgo nodo con costo minore da open
+
+        n->next = closed->head;
+        closed->head = n; //inserisco nodo con costo minore in closed
+
+        if((inizio>fine && closed->head->nodo->distanza == inizio) || (inizio<fine && closed->head->nodo->distanza == fine))
+            break;
+
+        listaArchi curNodoG = grafo->staz;
+        while(curNodoG != NULL){
+            if(curNodoG->head->s->distanza == closed->head->nodo->distanza)
+                break;
+            curNodoG = curNodoG->next;
+        }
+        if(curNodoG == NULL){
+            puts("nessun percorso");
+            break;
+        }
+        cur = curNodoG->head->next;
+
+        //inserimento ordinato dei nodi adiacenti in open
+        while(cur!=NULL){
+            int g = curNodoG->head->s->g + 1;
+            struct nodoOpen *curClose = closed->head;
+            short isClosed = 0;
+            while(curClose != NULL){ //controllo se il nodo non è già stato espanso
+                if(cur->s->distanza == curClose->nodo->distanza) {
+                    //da sistemare?
+                    isClosed = 1;
+                    break;
+                }
+                curClose = curClose->next;
+            }
+            if(isClosed == 0) {
+                struct nodoOpen *curOpen = open->head;
+                struct nodoOpen *prec = NULL;
+                while (curOpen != NULL) {
+                    //controllo se il nodo è già in open
+                    if(curOpen->nodo->distanza == cur->s->distanza){
+                        if(g < curOpen->nodo->g){
+                            curOpen->nodo->g = g;
+                            curOpen->p = closed->head;
+                            struct nodoOpen *nodoOp2 = open->head;
+                            prec = NULL;
+                            int cnew=curOpen->nodo->distanza + g;
+                            while(nodoOp2 != curOpen){
+                                int ccorrente = nodoOp2->nodo->distanza + nodoOp2->nodo->g;
+                                if(ccorrente > cnew){
+                                    if(prec == NULL){
+                                        curOpen->next = open->head;
+                                        open->head = curOpen;
+                                    }
+                                    else{
+                                        prec->next = curOpen;
+                                        curOpen->next = nodoOp2;
+                                    }
+                                    break;
+                                }
+                                prec= nodoOp2;
+                                nodoOp2 = nodoOp2->next;
+                            }
+                        }
+                        break;
+                    }
+                    int costo = cur->s->distanza + g;
+                    int costoOp = curOpen->nodo->distanza + curOpen->nodo->g;
+                    if (costo < costoOp) {
+                        cur->s->g = g;
+                        struct nodoOpen *temp = malloc(sizeof(struct nodoOpen));
+                        temp->nodo = cur->s;
+                        temp->p = closed->head;
+                        if (prec == NULL) {
+                            temp->next = open->head;
+                            open->head = temp;
+                            break;
+                        }
+                        temp->next = curOpen;
+                        prec->next = temp;
+                        break;
+                    }
+                    prec = curOpen;
+                    curOpen = curOpen->next;
+                }
+                if (curOpen == NULL) {
+                    cur->s->g = g;
+                    struct nodoOpen *temp = malloc(sizeof(struct nodoOpen));
+                    temp->nodo = cur->s;
+                    temp->p = closed->head;
+                    if(prec==NULL){
+                        temp->next = open->head;
+                        open->head = temp;
+                    }
+                    else{
+                        prec->next = temp;
+                        temp->next = NULL;
+                    }
+                }
+            }
+            cur = cur->next;
+        }
+    }
+
+
+    if(inizio<fine && closed->head->nodo->distanza == fine)
+        stampaPercorsoAsc(closed, fine);
+    else if(inizio>fine && closed->head->nodo->distanza == inizio)
+        stampaPercorsoDesc(closed, fine);
+    else
+        liberaLista(closed);
+    liberaLista(open);
+
+    curl = grafo->staz;
+    listaArchi precl = NULL;
+    while(curl != NULL){
+        cur = curl->head;
+        struct nodog *prec = NULL;
+        while(cur!=NULL){
+            prec = cur;
+            cur = cur->next;
+            free(prec);
+        }
+        precl = curl;
+        curl = curl->next;
+        free(precl);
+    }
+    free(grafo);
+    grafo = NULL;
+}
+
+void stampaPercorsoDesc(struct listaOpen *closed, int fine){
+    struct nodoOpen *curcl = closed->head;
+
+
+    while(curcl != NULL){
+        struct nodoOpen *parent = curcl->p;
+        struct nodoOpen *succ = curcl->next;
+        while(parent != succ){
+            curcl->next = succ->next;
+            free(succ);
+            succ = curcl->next;
+        }
+        printf("%d", curcl->nodo->distanza);
+        if(curcl->nodo->distanza != fine)
+            printf(" ");
+        curcl = curcl->p;
+    }
+    printf("\n");//modifico con i puts?
+    liberaLista(closed);
+}
+
+void stampaPercorsoAsc(struct listaOpen *closed, int fine){
+    //struct nodoOpen *curcl = closed->head->p;
+    struct nodoOpen *curcl = closed->head;
+    struct listaOpen *percorso = malloc(sizeof (struct listaOpen));
+    //percorso->head = closed->head;
+    //percorso->head->next = NULL;
+    percorso->head = NULL;
+
+    while(curcl != NULL){
+
+        struct nodoOpen *parent = curcl->p;
+        struct nodoOpen *succ = curcl->next;
+        while(parent != succ){
+            curcl->next = succ->next;
+            free(succ);
+            succ = curcl->next;
+        }
+
+        curcl->next = percorso->head;
+        percorso->head = curcl;
+        curcl = curcl->p;
+    }
+
+    char perc[100];
+    curcl = percorso->head;
+    sprintf(perc, "%d", curcl->nodo->distanza);
+    strcat(perc, " ");
+    curcl = curcl->next;
+    while(curcl != NULL){
+        int size = (int)((ceil(log10(curcl->nodo->distanza))+1)*sizeof(char));
+        char string[size];
+        sprintf(string, "%d", curcl->nodo->distanza);
+        strcat(perc,string);
+        if(curcl->nodo->distanza != fine)
+            strcat(perc, " ");
+        curcl = curcl->next;
+    }
+    puts(perc);
+    liberaLista(percorso);
+    free(closed);
 }
 
 void liberaLista(struct listaOpen *l){
@@ -465,39 +645,46 @@ void costruisciGrafoAsc(int inizio, int fine, stazione x){ //anche al contrario!
         if(x->distanza>=inizio && x->distanza<=fine){
             struct list *temp = malloc(sizeof(struct list));
             temp->head = malloc(sizeof(struct nodog));
-            temp->head->dist = x->distanza; //da controllare
+            temp->head->s = x; //da controllare
             temp->head->next = NULL;
             //temp->head->g = i;
-            temp->head->g=0;
+            temp->head->s->g=0;
             temp->next = grafo->staz;
             grafo->staz = temp;
             if(x->distanza < fine)
                 aggiungiArchiAsc(inizio, fine, stazioni->root, temp, x->veicoli[x->nVeicoli-1]);
-            }
+        }
         costruisciGrafoAsc(inizio, fine, x->left); //invertiti per leggere i valori dal maggiore al minore
     }
 }
 
 void costruisciGrafoDesc(int inizio, int fine, stazione x){ //anche al contrario!
     if(x != NULL){
-        costruisciGrafoDesc(inizio, fine, x->left);
+        costruisciGrafoDesc(inizio, fine, x->right);
 
         if(x->distanza>=fine && x->distanza<=inizio){
             //printf("grafo: dist=%d e autonomiaMax=%d\n", x->distanza, x->veicoli[x->nVeicoli-1]);
-            struct list *temp = malloc(sizeof(struct list));
+            /*struct list *temp = malloc(sizeof(struct list));
             temp->head = malloc(sizeof(struct nodog));
-            temp->head->dist = x->distanza; //da controllare
+            temp->head->s = x; //da controllare
             temp->head->next = NULL;
-            temp->head->g=0;
+            temp->head->s->g=0;
             temp->next = grafo->staz;
             grafo->staz = temp;
             //printf("aggiungo a grafo: %d -> ", temp->head->dist);
-            if(x->distanza > fine)
+            if(x->distanza >= fine)
                 aggiungiArchiDesc(inizio, fine, stazioni->root, temp, x->veicoli[x->nVeicoli-1]);
-            //printf("\n");
+            //printf("\n");*/
+            struct list *temp = malloc(sizeof(struct list));
+            temp->head = malloc(sizeof(struct nodog));
+            temp->head->s = x; //da controllare
+            temp->head->next = NULL;
+            temp->head->s->g=0;
+            temp->next = grafo->staz;
+            grafo->staz = temp;
         }
 
-        costruisciGrafoDesc(inizio, fine, x->right); //invertiti per leggere i valori dal maggiore al minore
+        costruisciGrafoDesc(inizio, fine, x->left); //invertiti per leggere i valori dal maggiore al minore
     }
 }
 
@@ -505,13 +692,13 @@ void aggiungiArchiAsc(int inizio, int fine, stazione s, listaArchi nodo, int aut
     if(s!=NULL){
         aggiungiArchiAsc(inizio, fine, s->right, nodo, autonomiaMax);
         //printf("inizio=%d e nodo->head->dist=%d\n", inizio, nodo->head->dist);
-        if(nodo->head->dist != s->distanza && s->distanza <= fine && s->distanza >= inizio &&
-            ((nodo->head->dist <= s->distanza && nodo->head->dist + autonomiaMax >= s->distanza) ||
-            (nodo->head->dist > s->distanza && nodo->head->dist - autonomiaMax <= s->distanza))){
+        if(nodo->head->s->distanza != s->distanza && s->distanza <= fine && s->distanza >= inizio &&
+           ((nodo->head->s->distanza <= s->distanza && nodo->head->s->distanza + autonomiaMax >= s->distanza) ||
+            (nodo->head->s->distanza > s->distanza && nodo->head->s->distanza - autonomiaMax <= s->distanza))){
             //printf("aggiungo arco: %d\n", s->distanza);
             struct nodog *temp = malloc(sizeof(struct nodog));
-            temp->dist = s->distanza;
-            temp->g = 0;
+            temp->s = s;
+            s->g = 0;
             temp->next = nodo->head->next;
             nodo->head->next = temp;
             //printf("%d -> ", temp->dist);
@@ -520,23 +707,55 @@ void aggiungiArchiAsc(int inizio, int fine, stazione s, listaArchi nodo, int aut
         aggiungiArchiAsc(inizio, fine, s->left, nodo, autonomiaMax);
     }
 }
+void aggiungiArchiDesc2(int inizio, int fine){
+    struct list *cur = grafo->staz->next;
+    while(cur != NULL){
+        int autonomiaMax = cur->head->s->veicoli[cur->head->s->nVeicoli-1];
+        int stazMax = cur->head->s->distanza - autonomiaMax;
+        struct list *a = grafo->staz;
+        while(a != cur){
+            if(a->head->s->distanza >= stazMax){
+                struct nodog *temp = malloc(sizeof(struct nodog));
+                temp->s = cur->head->s;
+                temp->s->g = 0;//serve?
+
+                struct nodog *curArc = a->head;
+                if(curArc == NULL)
+                    a->head->next = temp;
+                else{
+                    while(curArc->next != NULL){
+                        curArc = curArc->next;
+                    }
+                    curArc->next = temp;
+                }
+
+                temp->next = NULL;
+                curArc = temp;
+            }
+            a = a->next;
+        }
+        cur = cur->next;
+    }
+}
 
 void aggiungiArchiDesc(int inizio, int fine, stazione s, listaArchi nodo, int autonomiaMax){
     if(s!=NULL){
-        aggiungiArchiDesc(inizio, fine, s->left, nodo, autonomiaMax);
+        aggiungiArchiDesc(inizio, fine, s->right, nodo, autonomiaMax);
 
-        if(nodo->head->dist != s->distanza && s->distanza >= fine && s->distanza <= inizio &&
-            ((nodo->head->dist <= s->distanza && nodo->head->dist + autonomiaMax >= s->distanza) ||
-            (nodo->head->dist > s->distanza && nodo->head->dist - autonomiaMax <= s->distanza))){
+        /*if(nodo->head->s->distanza != s->distanza && s->distanza >= fine && s->distanza <= inizio &&
+           ((nodo->head->s->distanza <= s->distanza && nodo->head->s->distanza + autonomiaMax >= s->distanza) ||
+            (nodo->head->s->distanza > s->distanza && nodo->head->s->distanza - autonomiaMax <= s->distanza))){
             struct nodog *temp = malloc(sizeof(struct nodog));
-            temp->dist = s->distanza;
-            temp->g = 0;
+            temp->s = s;
+            s->g = 0;
             temp->next = nodo->head->next;
             nodo->head->next = temp;
             //printf("%d -> ", temp->dist);
-        }
+        }*/
 
-        aggiungiArchiDesc(inizio, fine, s->right, nodo, autonomiaMax);
+
+
+        aggiungiArchiDesc(inizio, fine, s->left, nodo, autonomiaMax);
     }
 }
 
