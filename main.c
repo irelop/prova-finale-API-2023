@@ -227,7 +227,6 @@ int main() {
                         //stampaLista();
                         //pianificaPercorso(inizio, fine);
                     }
-                    //pianificaPercorso(inizio, fine);
                     dijkstra(inizio, fine);
                 }
             }
