@@ -1,17 +1,24 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
+
+struct nodov{
+    int a;
+    struct nodov *next;
+};
+struct veicoli{
+    struct nodov *head;
+};
+typedef struct veicoli* v;
 
 struct nodos{
     int distanza;
     int g;
     short visited;
-    //veicolo parco;
-    int *veicoli;
-    int nVeicoli;
+    struct nodov *autoMax;
     char colore; //r, b
     struct nodos *left, *right, *father;
+    v parco;
 };
 typedef struct nodos *stazione;
 
@@ -21,24 +28,6 @@ struct trees{
 
 typedef struct trees *alberos;
 alberos stazioni;
-int numStazioni;
-
-struct nodog{
-    struct nodos *s; //stazione
-    struct nodog *next;
-};
-
-struct list{
-    struct nodog *head;
-    struct list *next;
-};
-typedef struct list *listaArchi;
-
-struct graph{
-    listaArchi staz;
-};
-typedef struct graph *grafos;
-grafos grafo;
 
 struct nodoOpen{
     struct nodos *nodo;
@@ -56,61 +45,26 @@ void rotazioneD(stazione);
 stazione cercaStazione(stazione, int);
 void demolisciStazione(int);
 void deleteFixup(stazione);
-stazione trovaSuccessore(stazione);
+stazione trovaSuccessivo(stazione);
 stazione stazioneMinima(stazione);
-
+stazione trovaPrecedente(stazione);
+stazione stazioneMassima(stazione);
 
 short aggiungiAuto(stazione, int);
-int cercaAuto(stazione, int);
-void ordinaAuto(int[], int, int);
-void merge(int[], int, int, int);
 void rottamaAuto(stazione, int);
+void cercaAutoMax(stazione);
+void liberaParco(v);
 
-void costruisciGrafoAsc(int, int, stazione);
-void costruisciGrafoDesc(int, int, stazione);
-void aggiungiArchiAsc(int, int, stazione, listaArchi, int);
-void aggiungiArchiDesc(int, int, stazione, listaArchi, int);
-void aggiungiArchiDesc2(int, int);
-void pianificaPercorsoAsc(int, int);
-void pianificaPercorso(int, int);
 void liberaLista(struct listaOpen *l);
 void stampaPercorsoAsc(struct listaOpen*, int);
-void stampaPercorsoDesc(struct listaOpen*, int);
-void dijkstra(int, int);
-void liberaGrafo();
-void dijkstraDesc(int inizio, int fine);
 
-
-//da cancellare
-void inorder_tree_walk(stazione x)
-{
-    if(x!=NULL)
-    {
-        inorder_tree_walk(x->left);
-        printf("%d\n", x->distanza);
-        inorder_tree_walk(x->right);
-    }
-}
-
-void stampaLista(){
-    listaArchi cur = grafo->staz;
-    while(cur!=NULL){
-        printf("%d -> ",cur->head->s->distanza);
-        struct nodog *curN = cur->head->next;
-        while(curN != NULL){
-            printf("%d -> ", curN->s->distanza);
-            curN = curN->next;
-        }
-        printf("\n");
-        cur = cur->next;
-    }
-}
+void pianificaPercorsoSenzaGrafoAsc(stazione,stazione);
+void pianificaPercorsoSenzaGrafoDesc(stazione,stazione);
 
 int main() {
     char input[17000], comando[100];
     stazioni = malloc(sizeof(struct trees));
     stazioni->root = NULL;
-    numStazioni=0;
 
     while(fgets(input, 17000, stdin) != NULL ){
         sscanf(input, "%s", comando);
@@ -136,17 +90,10 @@ int main() {
                             i++;
                         }
                     }
-                    /*if(i != numV)
-                        puts("non aggiunta");*/
-                    //else if(veicoli[i-1] >= 0){
-                    ordinaAuto(veicoli, 0, numV-1);
                     aggiungiStazione(dist, numV, veicoli);
-                    //}
                 }
                 else
                     aggiungiStazione(dist, numV, NULL);
-
-                //inorder_tree_walk(stazioni->root);
             }
         }
         else if(strcmp(comando, "demolisci-stazione")==0) {
@@ -167,7 +114,7 @@ int main() {
                 }
                 else{
                     if (aggiungiAuto(s, autonomia) == 1) {
-                        ordinaAuto(s->veicoli, 0, s->nVeicoli-1);
+                        //ordinaAuto(s->veicoli, 0, s->nVeicoli-1);
                         puts("aggiunta");
                     } else
                         puts("non aggiunta");
@@ -196,286 +143,88 @@ int main() {
                 if(inizio == fine)
                     printf("%d\n", inizio);
                 else{
-                    grafo = malloc(sizeof(struct graph));
-                    grafo->staz = NULL;
                     if (inizio < fine) {
-                        costruisciGrafoAsc(inizio, fine, stazioni->root);
-                        //stampaLista();
-                        //pianificaPercorso(inizio, fine);
-                        dijkstra(inizio, fine);
+                        pianificaPercorsoSenzaGrafoAsc(cercaStazione(stazioni->root, inizio), cercaStazione(stazioni->root, fine));
                     }
                     else {
-                        //costruisciGrafoDesc(inizio, fine, stazioni->root);
-                        //aggiungiArchiDesc2(inizio, fine);
-                        //stampaLista();
-                        //pianificaPercorso(inizio, fine);
-                        costruisciGrafoDesc(inizio, fine, stazioni->root);
-                        //stampaLista();
-                        dijkstraDesc(inizio, fine);
+                        pianificaPercorsoSenzaGrafoDesc(cercaStazione(stazioni->root, inizio), cercaStazione(stazioni->root, fine));
                     }
 
                 }
             }
 
         }
-        else puts(input);
     }
     return 0;
 }
 
-void pianificaPercorsoAsc(int inizio, int fine){ //da finire ma non mi convince, aggiungo nodi nel grafo desc?
-    struct listaOpen *open = malloc(sizeof (struct listaOpen));
-    struct listaOpen *closed = malloc(sizeof(struct listaOpen));
-    struct nodog *cur;
-    open->head = malloc(sizeof (struct nodoOpen));
-
-    listaArchi curl = grafo->staz;
-    open->head->nodo = curl->head->s;
-    open->head->next = NULL;
-    open->head->p = NULL;
-    closed->head = NULL;
-
-    while(1){
-        struct nodoOpen *n = open->head;
-        // printf("tolgo da open: %d\n", open->head->nodo->dist);
-        if(n == NULL){
-            puts("nessun percorso");
-            break;
-        }
-        open->head = n->next; //tolgo nodo con costo minore da open
-
-        n->next = closed->head;
-        closed->head = n; //inserisco nodo con costo minore in closed
-
-        if(closed->head->nodo->distanza == fine)
-            break;
-
-        //printf("closed->head->nodo->dist=%d\n", closed->head->nodo->dist );
-
-        listaArchi curNodoG = grafo->staz;
-        while(curNodoG != NULL){
-            //printf("curNodoG->head->dist: %d\n", curNodoG->head->dist);
-            if(curNodoG->head->s->distanza == closed->head->nodo->distanza)
-                break;
-            curNodoG = curNodoG->next;
-        }
-        if(curNodoG == NULL){
-            puts("nessun percorso");
-            break;
-        }
-        cur = curNodoG->head->next;
-        //  printf("curNodog: %d\n", curNodoG->head->dist);
-
-        //inserimento ordinato dei nodi adiacenti in open
-        while(cur!=NULL){
-            //    printf("cur: %d\n", cur->dist);
-            int g = curNodoG->head->s->g + 1;
-            struct nodoOpen *curClose = closed->head;
-            short isClosed = 0;
-            while(curClose != NULL){ //controllo se il nodo non è già stato espanso
-                if(cur->s->distanza == curClose->nodo->distanza) {
-                    //da sistemare?
-                    isClosed = 1;
-                    break;
-                }
-                curClose = curClose->next;
-            }
-            if(isClosed == 0) {
-                struct nodoOpen *curOpen = open->head;
-                struct nodoOpen *prec = NULL;
-                while (curOpen != NULL) {
-                    //controllo se il nodo è già in open
-                    if(curOpen->nodo->distanza == cur->s->distanza){
-                        if(g < curOpen->nodo->g){
-                            curOpen->nodo->g = g;
-                            curOpen->p = closed->head;
-
-                            struct nodoOpen *nodoOp2 = open->head;
-                            prec = NULL;
-                            int cnew = curOpen->nodo->distanza + g;
-                            while(nodoOp2 != NULL){
-                                int ccorrente = nodoOp2->nodo->distanza + g;
-                                if(ccorrente > cnew){
-                                    if(prec == NULL){
-                                        curOpen->next = open->head;
-                                        open->head = curOpen;
-                                    }
-                                    else{
-                                        prec->next = curOpen;
-                                        curOpen->next = nodoOp2;
-                                    }
-                                    break;
-                                }
-                                prec= nodoOp2;
-                                nodoOp2 = nodoOp2->next;
-                            }
-                        }
-                        break;
-                    }
-                    int costo = cur->s->distanza + g;
-                    int costoOp = curOpen->nodo->distanza + curOpen->nodo->g;
-                    if (costo < costoOp) {
-                        cur->s->g = g;
-                        struct nodoOpen *temp = malloc(sizeof(struct nodoOpen));
-                        temp->nodo = cur->s;
-                        temp->p = closed->head;
-                        if (prec == NULL) {
-                            temp->next = open->head;
-                            open->head = temp;
-                            //    printf("aggiungo a open: %d\n", temp->nodo->dist);
-                            break;
-                        }
-                        temp->next = curOpen;
-                        prec->next = temp;
-                        break;
-                        //  printf("aggiungo a open: %d\n", temp->nodo->dist);
-                    }
-                    prec = curOpen;
-                    curOpen = curOpen->next;
-                }
-                if (curOpen == NULL) {
-                    struct nodoOpen *temp = malloc(sizeof(struct nodoOpen));
-                    temp->nodo = cur->s;
-                    temp->p = closed->head;
-                    if(prec==NULL){
-                        temp->next = open->head;
-                        open->head = temp;
-                    }
-                    else{
-                        prec->next = temp;
-                        temp->next = NULL;
-                    }
-                    // printf("aggiungo a open: %d\n", temp->nodo->dist);
-                }
-            }
-            cur = cur->next;
-        }
-    }
-
-
-    if(closed->head->nodo->distanza == fine)
-        stampaPercorsoAsc(closed, fine);
-    else if(inizio>fine && closed->head->nodo->distanza == inizio)
-        stampaPercorsoDesc(closed, fine);
-    else
-        liberaLista(closed);
-    liberaLista(open);
-
-    curl = grafo->staz;
-    listaArchi precl = NULL;
-    while(curl != NULL){
-        cur = curl->head;
-        struct nodog *prec = NULL;
-        while(cur!=NULL){
-            prec = cur;
-            cur = cur->next;
-            free(prec);
-
-        }
-        precl = curl;
-        curl = curl->next;
-        free(precl);
-    }
-    free(grafo);
-    grafo = NULL;
-}
-
-void dijkstraDesc(int inizio, int fine){
-    if(grafo->staz->head->next == NULL){
+void pianificaPercorsoSenzaGrafoDesc(stazione inizio, stazione fine){
+    if(inizio==NULL || fine==NULL){
         puts("nessun percorso");
-        liberaGrafo();
         return;
     }
 
     struct listaOpen *open = malloc(sizeof (struct listaOpen));
-    open->head = NULL;
-
-    struct list *curGrafo = grafo->staz;
-    struct nodoOpen *curUnv = NULL;
-
-    /*while(curGrafo != NULL){
-        struct nodoOpen *temp = malloc(sizeof(struct nodoOpen));
-        temp->nodo = curGrafo->head->s;
-        temp->p = NULL;
-        if(curUnv == NULL)
-            open->head = temp;
-        else
-            curUnv->next = temp;
-        curUnv = temp;
-        temp->next = NULL;
-        curGrafo = curGrafo->next;
-    }*/
-    struct listaOpen *visited = malloc(sizeof(struct listaOpen));
-    visited->head = NULL;
-
-    open->head = malloc(sizeof (struct nodoOpen));
-    open->head->nodo = grafo->staz->head->s;
+    open->head = malloc(sizeof(struct nodoOpen));
+    open->head->nodo = inizio;
     open->head->next = NULL;
     open->head->p = NULL;
     open->head->nodo->g = 0;
-    open->head->nodo->visited = 1;
+
+    struct nodoOpen *fineOp = NULL;
+
+    struct listaOpen *closed = malloc(sizeof(struct listaOpen));
+    closed->head = NULL;
+
     while(1){
-        struct nodoOpen *n = open->head;
-        if(n==NULL){
+
+        if(open->head==NULL){
             puts("nessun percorso");
-            liberaLista(visited);
-            liberaLista(open);
-            liberaGrafo();
+            liberaLista(closed);
+            free(open);
             return;
         }
+
+
+        struct nodoOpen *n = open->head;
+        if(n->next == NULL)
+            fineOp = NULL;
         open->head = open->head->next;
+        n->next = closed->head;
+        closed->head = n;
 
-        n->next = visited->head;
-        visited->head = n;
-        visited->head->nodo->visited = 1;
-
-        if(visited->head->nodo->distanza == fine)
+        if(closed->head->nodo->distanza == fine->distanza)
             break;
 
-        curGrafo = grafo->staz;
-        while(curGrafo != NULL){
-            if(curGrafo->head->s->distanza == visited->head->nodo->distanza)
-                break;
-            curGrafo = curGrafo->next;
-        }
-        if(curGrafo == NULL){
-            puts("nessun percorso");
-            liberaLista(visited);
-            liberaLista(open);
-            liberaGrafo();
-            return;
-        }
-        //printf("\n------------VISITO %d------------\n", curGrafo->head->s->distanza);
-        struct nodog *curArco = curGrafo->head->next;
-        while(curArco != NULL){
-            //controllo se è già stato visitato
-            //printf("arco %d\n", curArco->s->distanza);
-            if(curArco->s->visited == 0){
-                //int g = visited->head->nodo->g + curArco->s->distanza; //+ visited->head->nodo->distanza;
-                //puts("non visitato");
-                int g = visited->head->nodo->g + 1;
-                //printf("g: %d\n", g);
-                curUnv = open->head;
+        closed->head->nodo->visited = 1;
+
+        stazione curSt = trovaPrecedente(closed->head->nodo);
+        int distMax;
+        if(closed->head->nodo->autoMax != NULL)
+            distMax = closed->head->nodo->distanza - closed->head->nodo->autoMax->a;
+        else
+            distMax = closed->head->nodo->distanza;
+        int g = closed->head->nodo->g + 1;
+        struct nodoOpen *curOp = open->head;
+
+        while(curSt != NULL && curOp != NULL && curSt->distanza > curOp->nodo->distanza){
+            if(curSt->visited == 0){
+                struct nodoOpen *curUnv = open->head;
                 struct nodoOpen *precUnv = NULL;
                 while(curUnv != NULL){
                     //controllo se è già in open
-                    if(curUnv->nodo->distanza == curArco->s->distanza){
-                        //puts("è aperto");
-                        //printf("controllo: %d<%d\n",g,curUnv->nodo->g);
+                    if(curUnv->nodo->distanza == curSt->distanza){
                         if(g < curUnv->nodo->g){
                             curUnv->nodo->g = g;
-                            //puts("modifico g");
-                            curUnv->p = visited->head;
+                            curUnv->p = closed->head;
                             struct nodoOpen *curUnv2 = open->head;
                             struct nodoOpen *precUnv2 = NULL;
                             while(curUnv2 != curUnv){
                                 if(curUnv2->nodo->g > g || (curUnv2->nodo->g == g && curUnv2->nodo->distanza > curUnv->nodo->distanza)){
-                                    //puts("reinserisco il nodo");
                                     if(precUnv==NULL)//è possibile?
                                         open->head = open->head->next;
                                     else
                                         precUnv->next = curUnv->next;
-
 
                                     if(precUnv2 == NULL){
                                         curUnv->next = open->head->next;
@@ -493,21 +242,18 @@ void dijkstraDesc(int inizio, int fine){
                         }
                         break;
                     }
-                    else if(curUnv->nodo->g > g || (curUnv->nodo->g == g && curUnv->nodo->distanza > curArco->s->distanza)) {
-                        //puts("creo un nuovo nodo");
+                    else if(curUnv->nodo->g > g || (curUnv->nodo->g == g && curUnv->nodo->distanza > curSt->distanza)) {
                         struct nodoOpen *temp = malloc(sizeof(struct nodoOpen));
-                        temp->nodo = curArco->s;
+                        temp->nodo = curSt;
                         temp->nodo->g = g;
-                        temp->p = visited->head;
+                        temp->p = closed->head;
                         if(precUnv == NULL){
                             temp->next = open->head;
                             open->head = temp;
-                            //puts("lo inserisco in testa");
                         }
                         else{
                             precUnv->next = temp;
                             temp->next = curUnv;
-                            //printf("lo inserisco tra %d e %d\n", precUnv->nodo->distanza, curUnv->nodo->distanza);
                         }
                         break;
                     }
@@ -516,10 +262,10 @@ void dijkstraDesc(int inizio, int fine){
                 }
                 if(curUnv == NULL){
                     struct nodoOpen *temp = malloc(sizeof(struct nodoOpen));
-                    temp->nodo = curArco->s;
+                    temp->nodo = curSt;
                     temp->nodo->g = g;
-                    temp->p = visited->head;
-                    //puts("lo inserisco in fondo");
+                    temp->p = closed->head;
+                    fineOp = temp;
                     if(precUnv == NULL){
                         temp->next = NULL;
                         open->head = temp;
@@ -530,106 +276,217 @@ void dijkstraDesc(int inizio, int fine){
                     }
                 }
             }
-            curArco = curArco->next;
+            curSt = trovaPrecedente(curSt);
         }
 
+        if(fineOp != NULL && fineOp->nodo->distanza >= distMax){
+            curSt = trovaPrecedente(fineOp->nodo);
+            while(curSt != NULL && curSt->distanza >= distMax){
+                if(curSt->visited == 0){
+                    struct nodoOpen *curUnv = open->head;
+                    struct nodoOpen *precUnv = NULL;
+                    while(curUnv != NULL){
+                        //controllo se è già in open
+                        if(curUnv->nodo->distanza == curSt->distanza){
+                            if(g < curUnv->nodo->g){
+                                curUnv->nodo->g = g;
+                                curUnv->p = closed->head;
+                                struct nodoOpen *curUnv2 = open->head;
+                                struct nodoOpen *precUnv2 = NULL;
+                                while(curUnv2 != curUnv){
+                                    if(curUnv2->nodo->g > g || (curUnv2->nodo->g == g && curUnv2->nodo->distanza > curUnv->nodo->distanza)){
+                                        if(precUnv==NULL)//è possibile?
+                                            open->head = open->head->next;
+                                        else
+                                            precUnv->next = curUnv->next;
+
+                                        if(precUnv2 == NULL){
+                                            curUnv->next = open->head->next;
+                                            open->head = curUnv;
+                                        }
+                                        else{
+                                            precUnv2->next = curUnv;
+                                            curUnv->next = curUnv2;
+                                        }
+                                        break;
+                                    }
+                                    precUnv2 = curUnv2;
+                                    curUnv2 = curUnv2->next;
+                                }
+                            }
+                            break;
+                        }
+                        else if(curUnv->nodo->g > g || (curUnv->nodo->g == g && curUnv->nodo->distanza > curSt->distanza)) {
+                            struct nodoOpen *temp = malloc(sizeof(struct nodoOpen));
+                            temp->nodo = curSt;
+                            temp->nodo->g = g;
+                            temp->p = closed->head;
+                            fineOp = temp;
+                            if(precUnv == NULL){
+                                temp->next = open->head;
+                                open->head = temp;
+                            }
+                            else{
+                                precUnv->next = temp;
+                                temp->next = curUnv;
+                            }
+                            break;
+                        }
+                        precUnv = curUnv;
+                        curUnv = curUnv->next;
+                    }
+                    if(curUnv == NULL){
+                        struct nodoOpen *temp = malloc(sizeof(struct nodoOpen));
+                        temp->nodo = curSt;
+                        temp->nodo->g = g;
+                        temp->p = closed->head;
+                        if(precUnv == NULL){
+                            temp->next = NULL;
+                            open->head = temp;
+                        }
+                        else{
+                            precUnv->next = temp;
+                            temp->next = NULL;
+                        }
+                    }
+                }
+                curSt = trovaPrecedente(curSt);
+            }
+        }
+
+        if(curOp == NULL)
+            while(curSt != NULL && curSt->distanza >= distMax){
+                if(curSt->visited == 0){
+                    struct nodoOpen *curUnv = open->head;
+                    struct nodoOpen *precUnv = NULL;
+                    while(curUnv != NULL){
+                        //controllo se è già in open
+                        if(curUnv->nodo->distanza == curSt->distanza){
+                            if(g < curUnv->nodo->g){
+                                curUnv->nodo->g = g;
+                                curUnv->p = closed->head;
+                                struct nodoOpen *curUnv2 = open->head;
+                                struct nodoOpen *precUnv2 = NULL;
+                                while(curUnv2 != curUnv){
+                                    //puts("qui");
+                                    if(curUnv2->nodo->g > g || (curUnv2->nodo->g == g && curUnv2->nodo->distanza > curUnv->nodo->distanza)){
+                                        if(precUnv==NULL)//è possibile?
+                                            open->head = open->head->next;
+                                        else
+                                            precUnv->next = curUnv->next;
+
+                                        if(precUnv2 == NULL){
+                                            curUnv->next = open->head->next;
+                                            open->head = curUnv;
+                                        }
+                                        else{
+                                            precUnv2->next = curUnv;
+                                            curUnv->next = curUnv2;
+                                        }
+                                        break;
+                                    }
+                                    precUnv2 = curUnv2;
+                                    curUnv2 = curUnv2->next;
+                                }
+                            }
+                            break;
+                        }
+                        else if(curUnv->nodo->g > g || (curUnv->nodo->g == g && curUnv->nodo->distanza > curSt->distanza)) {
+                            struct nodoOpen *temp = malloc(sizeof(struct nodoOpen));
+                            temp->nodo = curSt;
+                            temp->nodo->g = g;
+                            temp->p = closed->head;
+                            fineOp = temp;
+                            if(precUnv == NULL){
+                                temp->next = open->head;
+                                open->head = temp;
+                            }
+                            else{
+                                precUnv->next = temp;
+                                temp->next = curUnv;
+                            }
+                            break;
+                        }
+                        precUnv = curUnv;
+                        curUnv = curUnv->next;
+                    }
+                    if(curUnv == NULL){
+                        struct nodoOpen *temp = malloc(sizeof(struct nodoOpen));
+                        temp->nodo = curSt;
+                        temp->nodo->g = g;
+                        temp->p = closed->head;
+                        if(precUnv == NULL){
+                            temp->next = NULL;
+                            open->head = temp;
+                        }
+                        else{
+                            precUnv->next = temp;
+                            temp->next = NULL;
+                        }
+                    }
+                }
+                curSt = trovaPrecedente(curSt);
+            }
     }
 
-
-    /*curUnv = visited->head;
-    while(curUnv!=NULL){
-        printf("%d, p: ", curUnv->nodo->distanza);
-        if(curUnv->p != NULL)
-            printf("%d\n",curUnv->p->nodo->distanza);
-        else
-            printf("NULL\n");
-
-        curUnv = curUnv->next;
-    }*/
-
-    stampaPercorsoAsc(visited, fine);
+    stampaPercorsoAsc(closed, fine->distanza);
     liberaLista(open);
-    liberaGrafo();
+    //setVisited(stazioni->root);
+    //setVisited2(fine, inizio);
 }
-
-void dijkstra(int inizio, int fine){
-    if(grafo->staz->head->next == NULL){
+void pianificaPercorsoSenzaGrafoAsc(stazione inizio, stazione fine){
+    if(inizio==NULL || fine==NULL){
         puts("nessun percorso");
-        liberaGrafo();
         return;
     }
 
     struct listaOpen *open = malloc(sizeof (struct listaOpen));
-    open->head = NULL;
-
-    struct list *curGrafo = grafo->staz;
-    struct nodoOpen *curUnv = NULL;
-
-    /*while(curGrafo != NULL){
-        struct nodoOpen *temp = malloc(sizeof(struct nodoOpen));
-        temp->nodo = curGrafo->head->s;
-        temp->p = NULL;
-        if(curUnv == NULL)
-            open->head = temp;
-        else
-            curUnv->next = temp;
-        curUnv = temp;
-        temp->next = NULL;
-        curGrafo = curGrafo->next;
-    }*/
-    struct listaOpen *visited = malloc(sizeof(struct listaOpen));
-    visited->head = NULL;
-
-    open->head = malloc(sizeof (struct nodoOpen));
-    open->head->nodo = grafo->staz->head->s;
+    open->head = malloc(sizeof(struct nodoOpen));
+    open->head->nodo = inizio;
     open->head->next = NULL;
     open->head->p = NULL;
     open->head->nodo->g = 0;
-    open->head->nodo->visited = 1;
+
+    struct nodoOpen *fineOp = NULL;
+
+    struct listaOpen *closed = malloc(sizeof(struct listaOpen));
+    closed->head = NULL;
+
     while(1){
-        struct nodoOpen *n = open->head;
-        if(n==NULL || (inizio<fine && n->nodo->distanza == fine && n->nodo->g == 2147483647) || (inizio>fine && n->nodo->distanza == inizio && n->nodo->g == 2147483647)){
+
+        if(open->head==NULL){
             puts("nessun percorso");
-            liberaLista(visited);
-            liberaLista(open);
-            liberaGrafo();
+            liberaLista(closed);
+            free(open);
             return;
         }
+
+
+        struct nodoOpen *n = open->head;
+        if(n->next == NULL)
+            fineOp = NULL;
         open->head = open->head->next;
+        n->next = closed->head;
+        closed->head = n;
 
-        n->next = visited->head;
-        visited->head = n;
-        visited->head->nodo->visited = 1;
-
-        if((inizio>fine && visited->head->nodo->distanza == inizio) || (inizio<fine && visited->head->nodo->distanza == fine))
+        if(closed->head->nodo->distanza == fine->distanza)
             break;
 
-        curGrafo = grafo->staz;
-        while(curGrafo != NULL){
-            if(curGrafo->head->s->distanza == visited->head->nodo->distanza)
-                break;
-            curGrafo = curGrafo->next;
-        }
-        if(curGrafo == NULL){
-            puts("nessun percorso");
-            liberaLista(visited);
-            liberaLista(open);
-            liberaGrafo();
-            return;
-        }
-        struct nodog *curArco = curGrafo->head;
-        while(curArco != NULL){
-            //controllo se è già stato visitato
-            if(curArco->s->visited == 0){
-                int g = visited->head->nodo->g + curArco->s->distanza;
-                curUnv = open->head;
+        closed->head->nodo->visited = 1;
+        stazione curSt = trovaSuccessivo(closed->head->nodo);
+        int distMax = closed->head->nodo->distanza + closed->head->nodo->autoMax->a;
+        struct nodoOpen *curOp = open->head;
+        int g = closed->head->nodo->g + 1;
+        while(curSt != NULL && curOp != NULL && curSt->distanza < curOp->nodo->distanza){
+            if(curSt->visited == 0){
+                struct nodoOpen *curUnv = open->head;
                 struct nodoOpen *precUnv = NULL;
                 while(curUnv != NULL){
                     //controllo se è già in open
-                    if(curUnv->nodo->distanza == curArco->s->distanza){
+                    if(curUnv->nodo->distanza == curSt->distanza){
                         if(g < curUnv->nodo->g){
                             curUnv->nodo->g = g;
-                            curUnv->p = visited->head;
+                            curUnv->p = closed->head;
                             struct nodoOpen *curUnv2 = open->head;
                             struct nodoOpen *precUnv2 = NULL;
                             while(curUnv2 != curUnv){
@@ -638,7 +495,6 @@ void dijkstra(int inizio, int fine){
                                         open->head = open->head->next;
                                     else
                                         precUnv->next = curUnv->next;
-
 
                                     if(precUnv2 == NULL){
                                         curUnv->next = open->head->next;
@@ -656,11 +512,11 @@ void dijkstra(int inizio, int fine){
                         }
                         break;
                     }
-                    else if(curUnv->nodo->distanza > curArco->s->distanza) {
+                    else if(curUnv->nodo->g > g || (curUnv->nodo->g == g && curUnv->nodo->distanza > curSt->distanza)) {
                         struct nodoOpen *temp = malloc(sizeof(struct nodoOpen));
-                        temp->nodo = curArco->s;
+                        temp->nodo = curSt;
                         temp->nodo->g = g;
-                        temp->p = visited->head;
+                        temp->p = closed->head;
                         if(precUnv == NULL){
                             temp->next = open->head;
                             open->head = temp;
@@ -676,9 +532,10 @@ void dijkstra(int inizio, int fine){
                 }
                 if(curUnv == NULL){
                     struct nodoOpen *temp = malloc(sizeof(struct nodoOpen));
-                    temp->nodo = curArco->s;
+                    temp->nodo = curSt;
                     temp->nodo->g = g;
-                    temp->p = visited->head;
+                    temp->p = closed->head;
+                    fineOp = temp;
                     if(precUnv == NULL){
                         temp->next = NULL;
                         open->head = temp;
@@ -689,209 +546,164 @@ void dijkstra(int inizio, int fine){
                     }
                 }
             }
-            curArco = curArco->next;
+            curSt = trovaSuccessivo(curSt);
         }
 
-    }
+        if(fineOp != NULL && fineOp->nodo->distanza <= distMax){
+            curSt = trovaSuccessivo(fineOp->nodo);
+            while(curSt != NULL && curSt->distanza <= distMax){
+                if(curSt->visited == 0){
+                    struct nodoOpen *curUnv = open->head;
+                    struct nodoOpen *precUnv = NULL;
+                    while(curUnv != NULL){
+                        //controllo se è già in open
+                        if(curUnv->nodo->distanza == curSt->distanza){
+                            if(g < curUnv->nodo->g){
+                                curUnv->nodo->g = g;
+                                curUnv->p = closed->head;
+                                struct nodoOpen *curUnv2 = open->head;
+                                struct nodoOpen *precUnv2 = NULL;
+                                while(curUnv2 != curUnv){
+                                    if(curUnv2->nodo->g > g || (curUnv2->nodo->g == g && curUnv2->nodo->distanza > curUnv->nodo->distanza)){
+                                        if(precUnv==NULL)//è possibile?
+                                            open->head = open->head->next;
+                                        else
+                                            precUnv->next = curUnv->next;
 
-
-    /*curUnv = visited->head;
-    while(curUnv!=NULL){
-        printf("%d, p: ", curUnv->nodo->distanza);
-        if(curUnv->p != NULL)
-            printf("%d\n",curUnv->p->nodo->distanza);
-        else
-            printf("NULL\n");
-
-        curUnv = curUnv->next;
-    }*/
-
-    if(inizio<fine)
-        stampaPercorsoAsc(visited, fine);
-    else {
-        stampaPercorsoDesc(visited, fine);
-        liberaLista(visited);
-    }
-    liberaLista(open);
-    liberaGrafo();
-}
-
-void liberaGrafo(){
-    listaArchi curl = grafo->staz;
-    listaArchi precl = NULL;
-    while(curl != NULL){
-        struct nodog *cur = curl->head;
-        struct nodog *prec = NULL;
-        while(cur!=NULL){
-            prec = cur;
-            cur = cur->next;
-            free(prec);
-        }
-        precl = curl;
-        curl = curl->next;
-        free(precl);
-    }
-    free(grafo);
-    grafo = NULL;
-}
-
-void pianificaPercorso(int inizio, int fine){ //da finire ma non mi convince, aggiungo nodi nel grafo desc?
-    struct listaOpen *open = malloc(sizeof (struct listaOpen));
-    struct listaOpen *closed = malloc(sizeof(struct listaOpen));
-    struct nodog *cur;
-    open->head = malloc(sizeof (struct nodoOpen));
-
-    listaArchi curl = grafo->staz;
-    open->head->nodo = curl->head->s;
-    open->head->next = NULL;
-    open->head->p = NULL;
-    closed->head = NULL;
-
-    while(1){
-        struct nodoOpen *n = open->head;
-        if(n == NULL){
-            puts("nessun percorso");
-            break;
-        }
-        open->head = n->next; //tolgo nodo con costo minore da open
-
-        n->next = closed->head;
-        closed->head = n; //inserisco nodo con costo minore in closed
-
-        if((inizio>fine && closed->head->nodo->distanza == inizio) || (inizio<fine && closed->head->nodo->distanza == fine))
-            break;
-
-        listaArchi curNodoG = grafo->staz;
-        while(curNodoG != NULL){
-            if(curNodoG->head->s->distanza == closed->head->nodo->distanza)
-                break;
-            curNodoG = curNodoG->next;
-        }
-        if(curNodoG == NULL){
-            puts("nessun percorso");
-            break;
-        }
-        cur = curNodoG->head->next;
-
-        //inserimento ordinato dei nodi adiacenti in open
-        while(cur!=NULL){
-            int g = curNodoG->head->s->g + 1;
-            struct nodoOpen *curClose = closed->head;
-            short isClosed = 0;
-            while(curClose != NULL){ //controllo se il nodo non è già stato espanso
-                if(cur->s->distanza == curClose->nodo->distanza) {
-                    //da sistemare?
-                    isClosed = 1;
-                    break;
-                }
-                curClose = curClose->next;
-            }
-            if(isClosed == 0) {
-                struct nodoOpen *curOpen = open->head;
-                struct nodoOpen *prec = NULL;
-                while (curOpen != NULL) {
-                    //controllo se il nodo è già in open
-                    if(curOpen->nodo->distanza == cur->s->distanza){
-                        if(g < curOpen->nodo->g){
-                            curOpen->nodo->g = g;
-                            curOpen->p = closed->head;
-                            struct nodoOpen *nodoOp2 = open->head;
-                            prec = NULL;
-                            int cnew=curOpen->nodo->distanza + g;
-                            while(nodoOp2 != curOpen){
-                                int ccorrente = nodoOp2->nodo->distanza + nodoOp2->nodo->g;
-                                if(ccorrente > cnew){
-                                    if(prec == NULL){
-                                        curOpen->next = open->head;
-                                        open->head = curOpen;
+                                        if(precUnv2 == NULL){
+                                            curUnv->next = open->head->next;
+                                            open->head = curUnv;
+                                        }
+                                        else{
+                                            precUnv2->next = curUnv;
+                                            curUnv->next = curUnv2;
+                                        }
+                                        break;
                                     }
-                                    else{
-                                        prec->next = curOpen;
-                                        curOpen->next = nodoOp2;
-                                    }
-                                    break;
+                                    precUnv2 = curUnv2;
+                                    curUnv2 = curUnv2->next;
                                 }
-                                prec= nodoOp2;
-                                nodoOp2 = nodoOp2->next;
                             }
-                        }
-                        break;
-                    }
-                    int costo = cur->s->distanza + g;
-                    int costoOp = curOpen->nodo->distanza + curOpen->nodo->g;
-                    if (costo < costoOp) {
-                        cur->s->g = g;
-                        struct nodoOpen *temp = malloc(sizeof(struct nodoOpen));
-                        temp->nodo = cur->s;
-                        temp->p = closed->head;
-                        if (prec == NULL) {
-                            temp->next = open->head;
-                            open->head = temp;
                             break;
                         }
-                        temp->next = curOpen;
-                        prec->next = temp;
-                        break;
+                        else if(curUnv->nodo->g > g || (curUnv->nodo->g == g && curUnv->nodo->distanza > curSt->distanza)) {
+                            struct nodoOpen *temp = malloc(sizeof(struct nodoOpen));
+                            temp->nodo = curSt;
+                            temp->nodo->g = g;
+                            temp->p = closed->head;
+                            if(precUnv == NULL){
+                                temp->next = open->head;
+                                open->head = temp;
+                            }
+                            else{
+                                precUnv->next = temp;
+                                temp->next = curUnv;
+                            }
+                            break;
+                        }
+                        precUnv = curUnv;
+                        curUnv = curUnv->next;
                     }
-                    prec = curOpen;
-                    curOpen = curOpen->next;
+                    if(curUnv == NULL){
+                        struct nodoOpen *temp = malloc(sizeof(struct nodoOpen));
+                        temp->nodo = curSt;
+                        temp->nodo->g = g;
+                        temp->p = closed->head;
+                        fineOp = temp;
+                        if(precUnv == NULL){
+                            temp->next = NULL;
+                            open->head = temp;
+                        }
+                        else{
+                            precUnv->next = temp;
+                            temp->next = NULL;
+                        }
+                    }
                 }
-                if (curOpen == NULL) {
-                    cur->s->g = g;
-                    struct nodoOpen *temp = malloc(sizeof(struct nodoOpen));
-                    temp->nodo = cur->s;
-                    temp->p = closed->head;
-                    if(prec==NULL){
-                        temp->next = open->head;
-                        open->head = temp;
-                    }
-                    else{
-                        prec->next = temp;
-                        temp->next = NULL;
-                    }
-                }
+                curSt = trovaSuccessivo(curSt);
             }
-            cur = cur->next;
+        }
+
+        if(curOp == NULL){
+            while(curSt != NULL && curSt->distanza <= distMax){
+                if(curSt->visited == 0){
+                    struct nodoOpen *curUnv = open->head;
+                    struct nodoOpen *precUnv = NULL;
+                    while(curUnv != NULL){
+                        //controllo se è già in open
+                        if(curUnv->nodo->distanza == curSt->distanza){
+                            if(g < curUnv->nodo->g){
+                                curUnv->nodo->g = g;
+                                curUnv->p = closed->head;
+                                struct nodoOpen *curUnv2 = open->head;
+                                struct nodoOpen *precUnv2 = NULL;
+                                while(curUnv2 != curUnv){
+                                    if(curUnv2->nodo->g > g || (curUnv2->nodo->g == g && curUnv2->nodo->distanza > curUnv->nodo->distanza)){
+                                        if(precUnv==NULL)//è possibile?
+                                            open->head = open->head->next;
+                                        else
+                                            precUnv->next = curUnv->next;
+
+                                        if(precUnv2 == NULL){
+                                            curUnv->next = open->head->next;
+                                            open->head = curUnv;
+                                        }
+                                        else{
+                                            precUnv2->next = curUnv;
+                                            curUnv->next = curUnv2;
+                                        }
+                                        break;
+                                    }
+                                    precUnv2 = curUnv2;
+                                    curUnv2 = curUnv2->next;
+                                }
+                            }
+                            break;
+                        }
+                        else if(curUnv->nodo->g > g || (curUnv->nodo->g == g && curUnv->nodo->distanza > curSt->distanza)) {
+                            struct nodoOpen *temp = malloc(sizeof(struct nodoOpen));
+                            temp->nodo = curSt;
+                            temp->nodo->g = g;
+                            temp->p = closed->head;
+                            if(precUnv == NULL){
+                                temp->next = open->head;
+                                open->head = temp;
+                            }
+                            else{
+                                precUnv->next = temp;
+                                temp->next = curUnv;
+                            }
+                            break;
+                        }
+                        precUnv = curUnv;
+                        curUnv = curUnv->next;
+                    }
+                    if(curUnv == NULL){
+                        struct nodoOpen *temp = malloc(sizeof(struct nodoOpen));
+                        temp->nodo = curSt;
+                        temp->nodo->g = g;
+                        temp->p = closed->head;
+                        fineOp = temp;
+                        if(precUnv == NULL){
+                            temp->next = NULL;
+                            open->head = temp;
+                        }
+                        else{
+                            precUnv->next = temp;
+                            temp->next = NULL;
+                        }
+                    }
+                }
+                curSt = trovaSuccessivo(curSt);
+            }
         }
     }
 
-
-    if(inizio<fine && closed->head->nodo->distanza == fine)
-        stampaPercorsoAsc(closed, fine);
-    else if(inizio>fine && closed->head->nodo->distanza == inizio)
-        stampaPercorsoDesc(closed, fine);
-    else
-        liberaLista(closed);
+    stampaPercorsoAsc(closed, fine->distanza);
     liberaLista(open);
-
-    curl = grafo->staz;
-    listaArchi precl = NULL;
-    while(curl != NULL){
-        cur = curl->head;
-        struct nodog *prec = NULL;
-        while(cur!=NULL){
-            prec = cur;
-            cur = cur->next;
-            free(prec);
-        }
-        precl = curl;
-        curl = curl->next;
-        free(precl);
-    }
-    free(grafo);
-    grafo = NULL;
 }
 
-void stampaPercorsoDesc(struct listaOpen *closed, int fine){
-    struct nodoOpen *curcl = closed->head;
-    while(curcl != NULL){
-        printf("%d", curcl->nodo->distanza);
-        if(curcl->nodo->distanza != fine)
-            printf(" ");
-        curcl = curcl->p;
-    }
-    printf("\n");
-}
+
 
 void stampaPercorsoAsc(struct listaOpen *closed, int fine){
     //struct nodoOpen *curcl = closed->head->p;
@@ -907,6 +719,7 @@ void stampaPercorsoAsc(struct listaOpen *closed, int fine){
         struct nodoOpen *succ = curcl->next;
         while(parent != succ){
             curcl->next = succ->next;
+            succ->nodo->visited = 0;
             free(succ);
             succ = curcl->next;
         }
@@ -916,21 +729,15 @@ void stampaPercorsoAsc(struct listaOpen *closed, int fine){
         curcl = curcl->p;
     }
 
-    char perc[1000];
+
     curcl = percorso->head;
-    sprintf(perc, "%d", curcl->nodo->distanza);
-    strcat(perc, " ");
-    curcl = curcl->next;
     while(curcl != NULL){
-        int size = (int)((ceil(log10(curcl->nodo->distanza))+1)*sizeof(char));
-        char string[size];
-        sprintf(string, "%d", curcl->nodo->distanza);
-        strcat(perc,string);
+        printf("%d", curcl->nodo->distanza);
         if(curcl->nodo->distanza != fine)
-            strcat(perc, " ");
+            printf(" ");
         curcl = curcl->next;
     }
-    puts(perc);
+    printf("\n");
     liberaLista(percorso);
     free(closed);
 }
@@ -939,6 +746,7 @@ void liberaLista(struct listaOpen *l){
     struct nodoOpen *cur = l->head;
     struct nodoOpen *prec = NULL;
     while(cur != NULL){
+        cur->nodo->visited = 0;
         prec = cur;
         cur = cur->next;
         free(prec);
@@ -946,150 +754,20 @@ void liberaLista(struct listaOpen *l){
     free(l);
 }
 
-void costruisciGrafoAsc(int inizio, int fine, stazione x){ //anche al contrario!
-    if(x != NULL){
-        costruisciGrafoAsc(inizio, fine, x->right);
-
-        if(x->distanza>=inizio && x->distanza<=fine){
-            struct list *temp = malloc(sizeof(struct list));
-            temp->head = malloc(sizeof(struct nodog));
-            temp->head->s = x; //da controllare
-            temp->head->next = NULL;
-            //temp->head->s->g=0;
-            temp->head->s->g=2147483647;
-            temp->head->s->visited = 0;
-            temp->next = grafo->staz;
-            grafo->staz = temp;
-            if(x->distanza < fine)
-                aggiungiArchiAsc(inizio, fine, stazioni->root, temp, x->veicoli[x->nVeicoli-1]);
-        }
-        costruisciGrafoAsc(inizio, fine, x->left); //invertiti per leggere i valori dal maggiore al minore
-    }
-}
-
-void costruisciGrafoDesc(int inizio, int fine, stazione x){ //anche al contrario!
-    if(x != NULL){
-        costruisciGrafoDesc(inizio, fine, x->left);
-
-        if(x->distanza>=fine && x->distanza<=inizio){
-            //printf("grafo: dist=%d e autonomiaMax=%d\n", x->distanza, x->veicoli[x->nVeicoli-1]);
-            struct list *temp = malloc(sizeof(struct list));
-            temp->head = malloc(sizeof(struct nodog));
-            temp->head->s = x; //da controllare
-            temp->head->next = NULL;
-            temp->head->s->g = 0;
-            temp->next = grafo->staz;
-            temp->head->s->visited = 0;
-            grafo->staz = temp;
-            //printf("aggiungo a grafo: %d -> ", temp->head->dist);
-            if(x->distanza >= fine)
-                aggiungiArchiDesc(inizio, fine, stazioni->root, temp, x->veicoli[x->nVeicoli-1]);
-            //printf("\n");
-            /*
-            struct list *temp = malloc(sizeof(struct list));
-            temp->head = malloc(sizeof(struct nodog));
-            temp->head->s = x; //da controllare
-            temp->head->next = NULL;
-            //temp->head->s->g=0;
-            temp->head->s->g=2147483647;
-            temp->head->s->visited = 0;
-            temp->next = grafo->staz;
-            grafo->staz = temp;*/
-        }
-
-        costruisciGrafoDesc(inizio, fine, x->right); //invertiti per leggere i valori dal maggiore al minore
-    }
-}
-
-void aggiungiArchiAsc(int inizio, int fine, stazione s, listaArchi nodo, int autonomiaMax){
-    if(s!=NULL){
-        aggiungiArchiAsc(inizio, fine, s->right, nodo, autonomiaMax);
-        //printf("inizio=%d e nodo->head->dist=%d\n", inizio, nodo->head->dist);
-        if(nodo->head->s->distanza != s->distanza && s->distanza <= fine && s->distanza >= nodo->head->s->distanza &&
-           ((nodo->head->s->distanza <= s->distanza && nodo->head->s->distanza + autonomiaMax >= s->distanza) ||
-            (nodo->head->s->distanza > s->distanza && nodo->head->s->distanza - autonomiaMax <= s->distanza))){
-            //printf("aggiungo arco: %d\n", s->distanza);
-            struct nodog *temp = malloc(sizeof(struct nodog));
-            temp->s = s;
-            //s->g = 0;
-            temp->next = nodo->head->next;
-            nodo->head->next = temp;
-            //printf("%d -> ", temp->dist);
-        }
-
-        aggiungiArchiAsc(inizio, fine, s->left, nodo, autonomiaMax);
-    }
-}
-void aggiungiArchiDesc2(int inizio, int fine){
-    struct list *cur = grafo->staz->next;
-    while(cur != NULL){
-        int autonomiaMax = cur->head->s->veicoli[cur->head->s->nVeicoli-1];
-        int stazMax = cur->head->s->distanza - autonomiaMax;
-        struct list *a = grafo->staz;
-        while(a != cur){
-            if(a->head->s->distanza >= stazMax){
-                struct nodog *temp = malloc(sizeof(struct nodog));
-                temp->s = cur->head->s;
-                //temp->s->g = 0;//serve?
-
-                struct nodog *curArc = a->head;
-                if(curArc == NULL)
-                    a->head->next = temp;
-                else{
-                    while(curArc->next != NULL){
-                        curArc = curArc->next;
-                    }
-                    curArc->next = temp;
-                }
-
-                temp->next = NULL;
-                curArc = temp;
-            }
-            a = a->next;
-        }
-        cur = cur->next;
-    }
-}
-
-void aggiungiArchiDesc(int inizio, int fine, stazione s, listaArchi nodo, int autonomiaMax){
-    if(s!=NULL){
-        aggiungiArchiDesc(inizio, fine, s->left, nodo, autonomiaMax);
-
-        if(nodo->head->s->distanza != s->distanza && s->distanza >= fine && s->distanza <= nodo->head->s->distanza &&
-           ((nodo->head->s->distanza <= s->distanza && nodo->head->s->distanza + autonomiaMax >= s->distanza) ||
-            (nodo->head->s->distanza > s->distanza && nodo->head->s->distanza - autonomiaMax <= s->distanza))){
-            struct nodog *temp = malloc(sizeof(struct nodog));
-            temp->s = s;
-            //s->g = 0;
-            temp->next = nodo->head->next;
-            nodo->head->next = temp;
-            //printf("%d -> ", temp->dist);
-        }
-
-
-
-        aggiungiArchiDesc(inizio, fine, s->right, nodo, autonomiaMax);
-    }
-}
-
 void aggiungiStazione(int dist, int numV, int v[]){
     stazione temp = malloc(sizeof(struct nodos));
     temp->distanza = dist;
-    temp->veicoli = malloc(sizeof(int) * 512);
-    temp->nVeicoli = 0;
+    temp->parco = malloc(sizeof(struct veicoli));
+    temp->parco->head = NULL;
+    temp->autoMax = NULL;
+    temp->visited = 0;
+    //temp->g = 2147483647;
     if(numV != 0){
         for (int i = 0; i < numV; i++) {
-            /*if(dist == 447 || dist == 585)
-                printf("aggiungo auto %d (i=%d)\n", v[i], i);*/
-            if (aggiungiAuto(temp, v[i]) == 0) {
-                free(temp->veicoli);
-                free(temp);
-                puts("non aggiunta");
-                return;
-            }
+            aggiungiAuto(temp, v[i]);
         }
-        ordinaAuto(temp->veicoli, 0, numV-1);
     }
+
     if(stazioni->root == NULL){
         temp->left = NULL;
         temp->right = NULL;
@@ -1097,7 +775,6 @@ void aggiungiStazione(int dist, int numV, int v[]){
         stazioni->root = temp;
         insertFixup(temp);
         puts("aggiunta");
-        numStazioni++;
         return ;
     }
 
@@ -1110,7 +787,7 @@ void aggiungiStazione(int dist, int numV, int v[]){
         else if(temp->distanza > x->distanza)
             x = x->right;
         else {
-            free(temp->veicoli);
+            liberaParco(temp->parco);
             free(temp);
             puts("non aggiunta");
             return ;//stazione già presente
@@ -1118,7 +795,9 @@ void aggiungiStazione(int dist, int numV, int v[]){
 
     }
     temp->father = y;
-    if(temp->distanza < y->distanza)
+    if(y==NULL)
+        stazioni->root = temp;
+    else if(temp->distanza < y->distanza)
         y->left = temp;
     else y->right = temp;
     temp->left = NULL;
@@ -1126,7 +805,6 @@ void aggiungiStazione(int dist, int numV, int v[]){
     temp->colore = 'r';
     insertFixup(temp);
     puts("aggiunta");
-    numStazioni++;
 }
 
 void demolisciStazione(int dist){
@@ -1141,7 +819,7 @@ void demolisciStazione(int dist){
     if(s->left == NULL || s->right == NULL)
         y = s;
     else
-        y = trovaSuccessore(s);
+        y = trovaSuccessivo(s);
 
     if(y->left != NULL)
         x = y->left;
@@ -1158,24 +836,53 @@ void demolisciStazione(int dist){
     if(y != s){
         //sostituzione nodi!: metto in s le cose di y
         s->distanza = y->distanza;
-        s->nVeicoli = y->nVeicoli;
-        free(s->veicoli);
-        s->veicoli = y->veicoli;
+        liberaParco(s->parco);
+        s->parco = y->parco;
+        s->g = y->g;
+        s->visited = y->visited;
+        s->autoMax = y->autoMax;
+        //free(s->veicoli);
+
     }
-    else
-        free(y->veicoli);
+    else {
+        //free(y->autoMax);
+        liberaParco(y->parco);
+        //free(y->veicoli);
+    }
     if(y->colore == 'b' && x != NULL)
         deleteFixup(x);
     free(y);
     puts("demolita");
-    numStazioni--;
 }
 
-stazione trovaSuccessore(stazione s){
+void liberaParco(v parco){
+    struct nodov *cur = parco->head;
+    struct nodov *prec = NULL;
+
+    while(cur != NULL){
+        prec = cur;
+        cur = cur->next;
+        free(prec);
+    }
+    free(parco);
+}
+
+stazione trovaSuccessivo(stazione s){
     if(s->right != NULL)
         return stazioneMinima(s->right);
     stazione y = s->father;
     while(y != NULL && s == y->right){
+        s = y;
+        y = y->father;
+    }
+    return y;
+}
+
+stazione trovaPrecedente(stazione s){
+    if(s->left != NULL)
+        return stazioneMassima(s->left);
+    stazione y = s->father;
+    while(y != NULL && s == y->left){
         s = y;
         y = y->father;
     }
@@ -1188,32 +895,41 @@ stazione stazioneMinima(stazione s){
     return s;
 }
 
-/*void deleteFixup(stazione s){
+stazione stazioneMassima(stazione s){
+    while(s->right != NULL)
+        s = s->right;
+    return s;
+}
+
+void deleteFixup(stazione s){
     if(s->colore == 'r' || s->father == NULL)
         s->colore = 'b';
     else if(s == s->father->left){
         stazione w = s->father->right;
-        if(w->colore == 'r'){
+        if(w!=NULL && w->colore == 'r'){
             w->colore = 'b';
             s->father->colore = 'r';
             rotazioneS(s->father);
             w = s->father->right;
         }
-        if(w->left->colore == 'b' && w->right->colore == 'b'){
+        if(w!=NULL && w->left !=NULL && w->left->colore == 'b' && w->right != NULL && w->right->colore == 'b'){
             w->colore = 'r';
             s = s->father;
             deleteFixup(s);
         }
         else{
-            if(w->right->colore == 'b'){
-                w->left->colore = 'b';
+            if(w!=NULL && w->right !=NULL &&w->right->colore == 'b'){
+                if(w->left !=NULL)
+                    w->left->colore = 'b';
                 w->colore = 'r';
                 rotazioneD(w);
                 w = s->father->right;
             }
-            w->colore = s->father->colore;
+            if(w!=NULL)
+                w->colore = s->father->colore;
             s->father->colore = 'b';
-            w->right->colore = 'b';
+            if(w!=NULL && w->right != NULL )
+                w->right->colore = 'b';
             rotazioneS((s->father));
         }
     }
@@ -1233,168 +949,87 @@ stazione stazioneMinima(stazione s){
         }
         else
         {
-            if(w->left->colore == 'b')
+            if(w!=NULL && w->left !=NULL && w->left->colore == 'b')
             {
-                w->right->colore = 'b';
+                if(w->right !=NULL )
+                    w->right->colore = 'b';
                 w->colore = 'r';
                 rotazioneS(w);
                 w = s->father->left;
             }
-            w->colore = s->father->colore;
+            if(w!=NULL)
+                w->colore = s->father->colore;
             s->father->colore = 'b';
-            w->left->colore = 'b';
+            if(w!=NULL && w->left != NULL)
+                w->left->colore = 'b';
             rotazioneD(s->father);
         }
     }
-}*/
-
-void deleteFixup(stazione x){
-    while(x != stazioni->root && x->colore == 'b'){
-        if(x==x->father->left){
-            stazione w = x->father->right;
-            if(w != NULL && w->colore == 'r'){
-                w->colore = 'b';
-                x->father->colore = 'r';
-                rotazioneS(x->father);
-                w = x->father->right;
-            }
-            if(w->left != NULL && w->left->colore == 'b' && w->right != NULL && w->right->colore == 'b'){
-                w->colore = 'r';
-                x = x->father;
-            }
-            else{
-                if(w->right != NULL && w->right->colore == 'b'){
-                    if(w->left != NULL)
-                        w->left->colore = 'b';
-                    w->colore = 'r';
-                    rotazioneD(w);
-                    w = x->father->right;
-                }
-                w->colore = x->father->colore;
-                x->father->colore = 'b';
-                if(w->right != NULL)
-                    w->right->colore = 'b';
-                rotazioneS(x->father);
-                x = stazioni->root;
-            }
-        }
-        else{
-            stazione w = x->father->right;
-            if(w != NULL && w->colore == 'r'){
-                w->colore = 'b';
-                x->father->colore = 'r';
-                rotazioneD(x->father);
-                w = x->father->left;
-            }
-            if(w->right != NULL && w->right->colore == 'b' && w->left != NULL && w->left->colore == 'b'){
-                w->colore = 'r';
-                x = x->father;
-            }
-            else{
-                if(w->left != NULL && w->left->colore == 'b'){
-                    if(w->right != NULL)
-                        w->right->colore = 'b';
-                    w->colore = 'r';
-                    rotazioneS(w);
-                    w = x->father->left;
-                }
-                w->colore = x->father->colore;
-                x->father->colore = 'b';
-                if(w->left != NULL)
-                    w->left->colore = 'b';
-                rotazioneS(x->father);
-                x = stazioni->root;
-            }
-        }
-    }
-    x->colore = 'b';
 }
 
 short aggiungiAuto(stazione s, int autonomia){
     if(s == NULL)
         return 0;
-    s->veicoli[s->nVeicoli] = autonomia;
-    s->nVeicoli ++;
+    struct nodov *temp = malloc(sizeof(struct nodov));
+    temp->a = autonomia;
+
+    if(s->parco->head == NULL)
+        temp->next = NULL;
+    else
+        temp->next = s->parco->head;
+
+    s->parco->head = temp;
+
+    if(s->autoMax == NULL || s->parco->head->a > s->autoMax->a)
+        s->autoMax = s->parco->head;
+
     return 1;
 }
 
-int cercaAuto(stazione s, int autonomia){
-    if(s->nVeicoli == 0)
-        return -1;
-
-    int inizio = 0, fine = s->nVeicoli - 1, pos;
-
-    while(inizio<=fine){
-        pos = (inizio+fine)/2;
-        if(s->veicoli[pos] == autonomia)
-            return pos;
-        else if(s->veicoli[pos] > autonomia)
-            fine = pos - 1;
-        else
-            inizio = pos + 1;
-    }
-
-    return -1;
-}
-
-void ordinaAuto(int veicoli[], int p, int r){
-    if(p<r){
-        int q = (p+r)/2;
-        ordinaAuto(veicoli, p, q);
-        ordinaAuto(veicoli, q+1, r);
-        merge(veicoli, p, q, r);
-    }
-}
-void merge(int veicoli[], int p, int q, int r){
-    int n1 = q-p+1;
-    int n2 = r-q;
-    int L[n1], R[n2];
-    int i, j, k;
-    for(i=0; i<n1; i++)
-        L[i] = veicoli[p+i];
-    for(j=0; j<n2; j++)
-        R[j] = veicoli[q+j+1];
-
-    i=0;
-    j=0;
-    k= p;
-
-    while(i<n1 && j<n2){
-        if(L[i] <= R[j]){
-            veicoli[k] = L[i];
-            i++;
-        }
-        else{
-            veicoli[k] = R[j];
-            j++;
-        }
-        k++;
-    }
-    while(i<n1){
-        veicoli[k] = L[i];
-        i++;
-        k++;
-    }
-    while(j<n2){
-        veicoli[k] = R[j];
-        j++;
-        k++;
-    }
-
-}
-
 void rottamaAuto(stazione s, int autonomia){
-    int posVeicolo = cercaAuto(s, autonomia);
-    if(posVeicolo == -1) {
+    if(s->parco == NULL){
         puts("non rottamata");
-        return ;
+        return;
+    }
+    struct nodov *cur = s->parco->head;
+    struct nodov *prec = NULL;
+    if(cur == NULL){
+        puts("non rottamata");
+        return;
+    }
+    while(cur != NULL){
+        if(cur->a == autonomia){
+            if(prec==NULL)
+                s->parco->head = s->parco->head->next;
+            else
+                prec->next = cur->next;
+            if(cur->a == s->autoMax->a)
+                cercaAutoMax(s);
+            free(cur);
+            puts("rottamata");
+            return;
+        }
+        prec = cur;
+        cur = cur->next;
+    }
+    puts("non rottamata");
+}
+
+void cercaAutoMax(stazione s){
+    struct nodov *cur = s->parco->head;
+
+    if(cur == NULL){
+        s->autoMax = NULL;
+        return;
     }
 
-    for(int i=posVeicolo; i<s->nVeicoli-1; i++)
-        s->veicoli[i] = s->veicoli[i+1];
-
-    s->nVeicoli --;
-    puts("rottamata");
+    s->autoMax = cur;
+    cur = cur->next;
+    while(cur != NULL){
+        if(cur->a >= s->autoMax->a)
+            s->autoMax = cur;
+        cur = cur->next;
+    }
 }
 
 stazione cercaStazione(stazione s, int dist){
@@ -1408,60 +1043,57 @@ stazione cercaStazione(stazione s, int dist){
         return cercaStazione(s->right, dist);
 }
 
-void insertFixup(stazione temp){
-    if(temp == stazioni->root)
-        stazioni->root->colore = 'b';
-    else{
-        stazione x = temp->father;
-        if (x->colore == 'r') {
-            if (x == x->father->left) {
-                stazione y = x->father->right;
-                if (y != NULL && y->colore == 'r') {
-                    x->colore = 'b';
-                    y->colore = 'b';
-                    x->father->colore = 'r';
-                    insertFixup(x->father);
-                }
-                else{
-                    if(temp == x->right){
-                        temp = x;
-                        rotazioneS(temp);
-                        x = temp->father;
-                    }
-                    x->colore = 'b';
-                    x->father->colore = 'r';
-                    rotazioneD(x->father);
-                }
+void insertFixup(stazione z){
+    while(z!=NULL && z->father != NULL && z->father->colore == 'r'){
+        if(z->father->father != NULL && z->father == z->father->father->left){
+            stazione y = z->father->father->right;
+            if(y!=NULL && y->colore == 'r'){
+                z->father->colore = 'b';
+                y->colore = 'b';
+                z->father->father->colore = 'r';
+                z = z->father->father;
             }
             else{
-                stazione y = x->father->left;
-                if(y != NULL && y->colore == 'r'){
-                    x->colore = 'b';
-                    y->colore = 'b';
-                    x->father->colore = 'r';
-                    insertFixup(x->father);
+                if(z == z->father->right){
+                    z = z->father;
+                    rotazioneS(z);
                 }
-                else{
-                    if(temp == x->left){
-                        temp = x;
-                        rotazioneD(temp);
-                        x = temp->father;
-                    }
-                    x->colore = 'b';
-                    x->father->colore = 'r';
-                    rotazioneS(x->father);
+                z->father->colore = 'b';
+                z->father->father->colore = 'r';
+                rotazioneD(z->father->father);
+            }
+        }
+        else if(z->father->father != NULL){
+            stazione y = z->father->father->left;
+            if(y!=NULL && y->colore == 'r'){
+                z->father->colore = 'b';
+                y->colore = 'b';
+                z->father->father->colore = 'r';
+                z = z->father->father;
+            }
+            else{
+                if(z == z->father->left){
+                    z = z->father;
+                    rotazioneD(z);
                 }
+                z->father->colore = 'b';
+                z->father->father->colore = 'r';
+                rotazioneS(z->father->father);
             }
         }
     }
+    stazioni->root->colore = 'b';
 }
 
 void rotazioneS(stazione x){
     stazione y = x->right;
+    if(y==NULL)
+        return;
     x->right = y->left;
     if(y->left != NULL)
         y->left->father = x;
-    y->father = x->father;
+    if(y!=NULL)
+        y->father = x->father;
     if(x->father == NULL)
         stazioni->root = y;
     else if(x == x->father->left)
@@ -1474,6 +1106,8 @@ void rotazioneS(stazione x){
 
 void rotazioneD(stazione x){
     stazione y = x->left;
+    if(y==NULL)
+        return;
     x->left = y->right;
     if(y->right != NULL)
         y->right->father = x;
