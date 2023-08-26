@@ -757,18 +757,20 @@ void liberaLista(struct listaOpen *l){
 void aggiungiStazione(int dist, int numV, int v[]){
     stazione temp = malloc(sizeof(struct nodos));
     temp->distanza = dist;
-    temp->parco = malloc(sizeof(struct veicoli));
-    temp->parco->head = NULL;
     temp->autoMax = NULL;
     temp->visited = 0;
     //temp->g = 2147483647;
-    if(numV != 0){
-        for (int i = 0; i < numV; i++) {
-            aggiungiAuto(temp, v[i]);
-        }
-    }
+
 
     if(stazioni->root == NULL){
+        temp->parco = malloc(sizeof(struct veicoli));
+        temp->parco->head = NULL;
+        if(numV != 0){
+            for (int i = 0; i < numV; i++) {
+                aggiungiAuto(temp, v[i]);
+            }
+        }
+
         temp->left = NULL;
         temp->right = NULL;
         temp->father = NULL;
@@ -787,13 +789,22 @@ void aggiungiStazione(int dist, int numV, int v[]){
         else if(temp->distanza > x->distanza)
             x = x->right;
         else {
-            liberaParco(temp->parco);
+            //liberaParco(temp->parco);
             free(temp);
             puts("non aggiunta");
             return ;//stazione già presente
         }
 
     }
+
+    temp->parco = malloc(sizeof(struct veicoli));
+    temp->parco->head = NULL;
+    if(numV != 0){
+        for (int i = 0; i < numV; i++) {
+            aggiungiAuto(temp, v[i]);
+        }
+    }
+
     temp->father = y;
     if(y==NULL)
         stazioni->root = temp;
