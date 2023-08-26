@@ -62,11 +62,201 @@ void pianificaPercorsoSenzaGrafoAsc(stazione,stazione);
 void pianificaPercorsoSenzaGrafoDesc(stazione,stazione);
 
 int main() {
-    char input[17000], comando[100];
+    //char input[17000], comando[100];
+
     stazioni = malloc(sizeof(struct trees));
     stazioni->root = NULL;
 
-    while(fgets(input, 17000, stdin) != NULL ){
+    char c;
+    int count = 0, count0=0;
+    char comando[100];
+    c = getchar_unlocked();
+    while(c != EOF){
+        comando[count0] = c;
+        count0++;
+        c = getchar_unlocked();
+        while(c > ' ' && c < 0x7f){
+            comando[count0] = c;
+            count0++;
+            c = getchar_unlocked();
+        }
+        comando[count0] = '\0';
+        count0=0;
+        if(strcmp(comando, "aggiungi-stazione") == 0){
+            count = 0;
+            int dist, numV;
+            char d[10], n[10];
+            c = getchar_unlocked();
+            while(c > ' ' && c < 0x7f){
+               d[count] = c;
+               count++;
+               c = getchar_unlocked();
+           }
+            d[count] ='\0';
+           dist = atoi(d);
+            count = 0;
+
+            c = getchar_unlocked();
+            while(c > ' ' && c < 0x7f){
+                n[count] = c;
+                count++;
+                c = getchar_unlocked();
+            }
+            n[count] ='\0';
+            numV = atoi(n);
+            count = 0;
+
+            if(numV != 0){
+                int veicoli[numV], count2 = 0;
+                c = getchar_unlocked();
+                while(c>=48 && c<=57){
+                    char v[10];
+                    while(c>=48 && c<=57 && c > ' ' && c < 0x7f){
+                        v[count] = c;
+                        count++;
+                        c = getchar_unlocked();
+                    }
+                    v[count] ='\0';
+                    veicoli[count2] = atoi(v);
+                    count2++;
+                    count = 0;
+
+                    c = getchar_unlocked();
+
+                }
+                comando[0] = c;
+                count0 = 1;
+                aggiungiStazione(dist, numV, veicoli);
+            }
+            else
+                aggiungiStazione(dist, numV, NULL);
+
+        }
+        else if(strcmp(comando, "demolisci-stazione")==0) {
+            count = 0;
+
+            int dist;
+            char d[10];
+            c = getchar_unlocked();
+            while(c > ' ' && c < 0x7f){
+                d[count] = c;
+                count++;
+                c = getchar_unlocked();
+            }
+            d[count] ='\0';
+            dist = atoi(d);
+
+            demolisciStazione(dist);
+        }
+
+        else if(strcmp(comando, "aggiungi-auto")==0){
+            count = 0;
+            int dist, autonomia;
+            char d[10], a[10];
+            c = getchar_unlocked();
+            while(c > ' ' && c < 0x7f){
+                d[count] = c;
+                count++;
+                c = getchar_unlocked();
+            }
+            d[count] ='\0';
+            dist = atoi(d);
+            count = 0;
+
+            c = getchar_unlocked();
+            while(c > ' ' && c < 0x7f){
+                a[count] = c;
+                count++;
+                c = getchar_unlocked();
+            }
+            a[count] ='\0';
+            autonomia = atoi(a);
+
+            stazione s = cercaStazione(stazioni->root, dist);
+            if(s==NULL) {
+                puts("non aggiunta");
+            }
+            else{
+                if (aggiungiAuto(s, autonomia) == 1) {
+                    puts("aggiunta");
+                } else
+                    puts("non aggiunta");
+            }
+        }
+        else if(strcmp(comando, "rottama-auto")==0){
+            count = 0;
+            int dist, autonomia;
+            char d[10], a[10];
+            c = getchar();
+            while(c > ' ' && c < 0x7f){
+                d[count] = c;
+                count++;
+                c = getchar_unlocked();
+            }
+            d[count] ='\0';
+            dist = atoi(d);
+            count = 0;
+
+            c = getchar_unlocked();
+            while(c > ' ' && c < 0x7f){
+                a[count] = c;
+                count++;
+                c = getchar_unlocked();
+            }
+            a[count] ='\0';
+            autonomia = atoi(a);
+
+            stazione s = cercaStazione(stazioni->root, dist);
+            if(s == NULL)
+                puts("non rottamata");
+            else
+                rottamaAuto(s, autonomia);
+        }
+        else if(strcmp(comando, "pianifica-percorso")==0){
+            count = 0;
+            int inizio, fine;
+            char i[10], f[10];
+            c = getchar_unlocked();
+            while(c > ' ' && c < 0x7f){
+                i[count] = c;
+                count++;
+                c = getchar_unlocked();
+            }
+            i[count] ='\0';
+            inizio = atoi(i);
+            count = 0;
+
+            c = getchar_unlocked();
+            while(c > ' ' && c < 0x7f){
+                f[count] = c;
+                count++;
+                c = getchar_unlocked();
+            }
+            f[count] ='\0';
+            fine = atoi(f);
+
+            if(stazioni->root == NULL)
+                puts("nessun percorso");
+            else{
+                if(inizio == fine)
+                    printf("%d\n", inizio);
+                else{
+                    if (inizio < fine) {
+                        pianificaPercorsoSenzaGrafoAsc(cercaStazione(stazioni->root, inizio), cercaStazione(stazioni->root, fine));
+                    }
+                    else {
+                        pianificaPercorsoSenzaGrafoDesc(cercaStazione(stazioni->root, inizio), cercaStazione(stazioni->root, fine));
+                    }
+
+                }
+            }
+
+        }
+
+        c=getchar_unlocked();
+    }
+
+/*    while(fgets(input, 17000, stdin) != NULL ){
         sscanf(input, "%s", comando);
         if(strcmp(comando, "aggiungi-stazione") == 0){
             int dist, numV;
@@ -154,7 +344,7 @@ int main() {
             }
 
         }
-    }
+    }*/
     return 0;
 }
 
@@ -431,8 +621,6 @@ void pianificaPercorsoSenzaGrafoDesc(stazione inizio, stazione fine){
 
     stampaPercorsoAsc(closed, fine->distanza);
     liberaLista(open);
-    //setVisited(stazioni->root);
-    //setVisited2(fine, inizio);
 }
 void pianificaPercorsoSenzaGrafoAsc(stazione inizio, stazione fine){
     if(inizio==NULL || fine==NULL){
@@ -706,11 +894,8 @@ void pianificaPercorsoSenzaGrafoAsc(stazione inizio, stazione fine){
 
 
 void stampaPercorsoAsc(struct listaOpen *closed, int fine){
-    //struct nodoOpen *curcl = closed->head->p;
     struct nodoOpen *curcl = closed->head;
     struct listaOpen *percorso = malloc(sizeof (struct listaOpen));
-    //percorso->head = closed->head;
-    //percorso->head->next = NULL;
     percorso->head = NULL;
 
     while(curcl != NULL){
@@ -731,14 +916,19 @@ void stampaPercorsoAsc(struct listaOpen *closed, int fine){
 
 
     curcl = percorso->head;
+    struct nodoOpen *prec = NULL;
     while(curcl != NULL){
         printf("%d", curcl->nodo->distanza);
         if(curcl->nodo->distanza != fine)
             printf(" ");
+        curcl->nodo->visited = 0;
+        prec = curcl;
         curcl = curcl->next;
+        free(prec);
     }
     printf("\n");
-    liberaLista(percorso);
+
+    free(percorso);
     free(closed);
 }
 
