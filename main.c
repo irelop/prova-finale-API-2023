@@ -62,7 +62,6 @@ void pianificaPercorsoSenzaGrafoAsc(stazione,stazione);
 void pianificaPercorsoSenzaGrafoDesc(stazione,stazione);
 
 int main() {
-    //char input[17000], comando[100];
 
     stazioni = malloc(sizeof(struct trees));
     stazioni->root = NULL;
@@ -88,12 +87,12 @@ int main() {
             char d[10], n[10];
             c = getchar_unlocked();
             while(c > ' ' && c < 0x7f){
-               d[count] = c;
-               count++;
-               c = getchar_unlocked();
-           }
+                d[count] = c;
+                count++;
+                c = getchar_unlocked();
+            }
             d[count] ='\0';
-           dist = atoi(d);
+            dist = atoi(d);
             count = 0;
 
             c = getchar_unlocked();
@@ -256,95 +255,6 @@ int main() {
         c=getchar_unlocked();
     }
 
-/*    while(fgets(input, 17000, stdin) != NULL ){
-        sscanf(input, "%s", comando);
-        if(strcmp(comando, "aggiungi-stazione") == 0){
-            int dist, numV;
-            sscanf(input, "%*s %d %d", &dist, &numV);
-            if(dist < 0 || numV < 0)
-                puts("non aggiunta");
-            else{
-                if(numV != 0) {
-                    int veicoli[numV], i = 0;
-                    char *autonomie = strtok(input, " ");
-                    autonomie = strtok(NULL, " ");
-                    autonomie = strtok(NULL, " ");
-                    while (autonomie != NULL) {
-                        autonomie = strtok(NULL, " ");
-                        if (autonomie != NULL) {
-                            veicoli[i] = atoi(autonomie);
-                            if (veicoli[i] < 0) {
-                                puts("non aggiunta");
-                                break;
-                            }
-                            i++;
-                        }
-                    }
-                    aggiungiStazione(dist, numV, veicoli);
-                }
-                else
-                    aggiungiStazione(dist, numV, NULL);
-            }
-        }
-        else if(strcmp(comando, "demolisci-stazione")==0) {
-            int dist;
-            sscanf(input, "%*s %d", &dist);
-            demolisciStazione(dist);
-        }
-
-        else if(strcmp(comando, "aggiungi-auto")==0){
-            int dist, autonomia;
-            sscanf(input, "%*s %d %d", &dist, &autonomia);
-            if(dist<0 || autonomia<0)
-                puts("non aggiunta");
-            else{
-                stazione s = cercaStazione(stazioni->root, dist);
-                if(s==NULL) {
-                    puts("non aggiunta");
-                }
-                else{
-                    if (aggiungiAuto(s, autonomia) == 1) {
-                        //ordinaAuto(s->veicoli, 0, s->nVeicoli-1);
-                        puts("aggiunta");
-                    } else
-                        puts("non aggiunta");
-                }
-            }
-        }
-        else if(strcmp(comando, "rottama-auto")==0){
-            int dist, autonomia;
-            sscanf(input, "%*s %d %d", &dist, &autonomia);
-            if(dist<0 || autonomia<0)
-                puts("non rottamata");
-            else{
-                stazione s = cercaStazione(stazioni->root, dist);
-                if(s == NULL)
-                    puts("non rottamata");
-                else
-                    rottamaAuto(s, autonomia);
-            }
-        }
-        else if(strcmp(comando, "pianifica-percorso")==0){
-            int inizio, fine;
-            sscanf(input, "%*s %d %d", &inizio, &fine); //tenere vecchio grafo?
-            if(stazioni->root == NULL)
-                puts("nessun percorso");
-            else{
-                if(inizio == fine)
-                    printf("%d\n", inizio);
-                else{
-                    if (inizio < fine) {
-                        pianificaPercorsoSenzaGrafoAsc(cercaStazione(stazioni->root, inizio), cercaStazione(stazioni->root, fine));
-                    }
-                    else {
-                        pianificaPercorsoSenzaGrafoDesc(cercaStazione(stazioni->root, inizio), cercaStazione(stazioni->root, fine));
-                    }
-
-                }
-            }
-
-        }
-    }*/
     return 0;
 }
 
@@ -361,7 +271,7 @@ void pianificaPercorsoSenzaGrafoDesc(stazione inizio, stazione fine){
     open->head->p = NULL;
     open->head->nodo->g = 0;
 
-    struct nodoOpen *fineOp = NULL;
+    struct nodoOpen *fineOp = open->head;
 
     struct listaOpen *closed = malloc(sizeof(struct listaOpen));
     closed->head = NULL;
@@ -394,6 +304,14 @@ void pianificaPercorsoSenzaGrafoDesc(stazione inizio, stazione fine){
             distMax = closed->head->nodo->distanza - closed->head->nodo->autoMax->a;
         else
             distMax = closed->head->nodo->distanza;
+
+        if(curSt->distanza < distMax){
+            puts("nessun percorso");
+            liberaLista(closed);
+            liberaLista(open);
+            return;
+        }
+
         int g = closed->head->nodo->g + 1;
         struct nodoOpen *curOp = open->head;
 
@@ -662,9 +580,23 @@ void pianificaPercorsoSenzaGrafoAsc(stazione inizio, stazione fine){
 
         closed->head->nodo->visited = 1;
         stazione curSt = trovaSuccessivo(closed->head->nodo);
-        int distMax = closed->head->nodo->distanza + closed->head->nodo->autoMax->a;
+
+        int distMax;
+        if(closed->head->nodo->autoMax != NULL)
+            distMax = closed->head->nodo->distanza + closed->head->nodo->autoMax->a;
+        else
+            distMax = closed->head->nodo->distanza;
+
+        if(curSt->distanza > distMax){
+            puts("nessun percorso");
+            liberaLista(closed);
+            liberaLista(open);
+            return;
+        }
+
         struct nodoOpen *curOp = open->head;
         int g = closed->head->nodo->g + 1;
+
         while(curSt != NULL && curOp != NULL && curSt->distanza < curOp->nodo->distanza){
             if(curSt->visited == 0){
                 struct nodoOpen *curUnv = open->head;
@@ -892,7 +824,6 @@ void pianificaPercorsoSenzaGrafoAsc(stazione inizio, stazione fine){
 }
 
 
-
 void stampaPercorsoAsc(struct listaOpen *closed, int fine){
     struct nodoOpen *curcl = closed->head;
     struct listaOpen *percorso = malloc(sizeof (struct listaOpen));
@@ -979,7 +910,6 @@ void aggiungiStazione(int dist, int numV, int v[]){
         else if(temp->distanza > x->distanza)
             x = x->right;
         else {
-            //liberaParco(temp->parco);
             free(temp);
             puts("non aggiunta");
             return ;//stazione già presente
