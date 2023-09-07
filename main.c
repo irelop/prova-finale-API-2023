@@ -254,7 +254,6 @@ int main() {
 
         c=getchar_unlocked();
     }
-
     return 0;
 }
 
