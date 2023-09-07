@@ -61,6 +61,8 @@ void stampaPercorsoAsc(struct listaOpen*, int);
 void pianificaPercorsoSenzaGrafoAsc(stazione,stazione);
 void pianificaPercorsoSenzaGrafoDesc(stazione,stazione);
 
+void svuotaAlbero(stazione);
+
 int main() {
 
     stazioni = malloc(sizeof(struct trees));
@@ -254,7 +256,18 @@ int main() {
 
         c=getchar_unlocked();
     }
+    svuotaAlbero(stazioni->root);
     return 0;
+}
+
+void svuotaAlbero(stazione s){
+    if(s != NULL) {
+        svuotaAlbero(s->left);
+        svuotaAlbero(s->right);
+
+        liberaParco(s->parco);
+        free(s);
+    }
 }
 
 void pianificaPercorsoSenzaGrafoDesc(stazione inizio, stazione fine){
