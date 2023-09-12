@@ -2,6 +2,8 @@
 Final project for the course "Algoritmi e Principi dell'Informatica" held at Politecnico di Milano (2022/2023).
 
 Final vote: 30/30
+
+Language: C
 ## Aim of this project
 Implementation of a solution to a problem by paying attention to concrete aspects of code efficiency.
 ## Requirements
